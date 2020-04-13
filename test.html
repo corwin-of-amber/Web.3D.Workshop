@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>THREE.BoxGeometry</title>
+    <script src="node_modules/three/build/three.js"></script>
+    <script src="node_modules/three/examples/js/controls/OrbitControls.js"></script>
+    <style media="screen">
+      html,body{
+        padding:0;
+        margin:0;
+        overflow:hidden;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <script>
+      //Creates scene and camera
+
+      var scene = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+      //Creates renderer and adds it to the DOM
+
+      var renderer = new THREE.WebGLRenderer();
+      renderer.setSize( window.innerWidth, window.innerHeight );
+      document.body.appendChild( renderer.domElement );
+
+      // Lighting!
+
+      var lights = [];
+			lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+			lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+			lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+
+			lights[ 0 ].position.set( 0, 200, 0 );
+			lights[ 1 ].position.set( 100, 200, 100 );
+			lights[ 2 ].position.set( - 100, - 200, - 100 );
+
+			scene.add( lights[ 0 ] );
+			scene.add( lights[ 1 ] );
+			scene.add( lights[ 2 ] );
+
+      // Camera!
+      var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+      camera.position.z = 5;
+      camera.position.y = 5;
+
+      controls.update();
+
+      // ACTION!
+      // ACT I: The floor and the cone
+      // Enter Floor
+      var geometry = new THREE.BoxGeometry( 5,0.1, 5 );
+      var material = new THREE.MeshLambertMaterial( { color: 0x156289, emissive: 0x072534 } );
+      var cube = new THREE.Mesh( geometry, material );
+      scene.add( cube );
+
+      // Enter Cone
+      var geometry = new THREE.ConeGeometry( 1, 2, 60 );
+      var cone = new THREE.Mesh( geometry, material );
+      scene.add( cone );
+      cone.position.y = 1;
+
+      function render() {
+        controls.update();
+
+        requestAnimationFrame( render );
+        renderer.render( scene, camera );
+      }
+      
+      window.addEventListener( 'resize', function () {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}, false );
+
+      render();
+    </script>
+
+  </body>
+
+</html>
