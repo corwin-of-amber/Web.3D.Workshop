@@ -1,0 +1,122 @@
+<html>
+    <head>
+        <title>My first three.js app</title>
+
+        <script src="./node_modules/nwjs-kremlin/reload.js"></script>
+        <style>
+            body { margin: 0; }
+            canvas { width: 100%; height: 100% }
+        </style>
+    </head>
+    <body>
+        <script src="node_modules/three/build/three.js"></script>
+        
+        <script src="js/loaders/STLLoader.js"></script>
+        <script src="js/loaders/OBJLoader.js"></script>
+        <script src="node_modules/three/examples/js/loaders/GLTFLoader.js"></script>
+        <script src="node_modules/three/examples/js/controls/TrackballControls.js"></script>
+        <script src="node_modules/three/examples/js/controls/OrbitControls.js"></script>
+
+        <!-- <script src="js/shader.js"></script> -->
+        <script>
+var camera, scene, renderer, controls;
+var geometry, material, mesh, mixer, clock;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 5000 );
+    camera.position.z = 0;
+    camera.position.y = 0;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color( 0x505050 );
+    
+    //scene.add( new THREE.HemisphereLight( 0xffffff, 0x080820, 0.5 ) );
+
+    var light0 = new THREE.AmbientLight( 0xFFFFFF, 0.7 );
+    scene.add( light0 );
+    
+    var light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
+    light1.position.set( -0.5, -0.5, 0.866 ); //.normalize();
+    scene.add( light1 );
+    /*
+    var light2 = new THREE.DirectionalLight( 0xffffff );
+    light2.position.set( -4, 1, 2 ).normalize();
+    scene.add( light2 );
+    */
+    material = new THREE.MeshLambertMaterial({ color: 0x404080 });
+
+    /*
+    var materialColor = new THREE.Color();
+    materialColor.setRGB(1.0, 0.8, 0.6);
+
+    material = createShaderMaterial("phong", light1, light0);
+    material.uniforms.uMaterialColor.value.copy(materialColor);
+    material.side = THREE.FrontSide;
+    */
+
+    /*
+    geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+    */
+
+    
+    var loader = new THREE.STLLoader();
+    loader.load('models/utah.stl', (stl) => {
+        console.log(stl);
+        var mesh = new THREE.Mesh(stl, material);
+        scene.add(mesh);
+
+        mesh.geometry.computeBoundingSphere();
+        var center = mesh.geometry.boundingSphere.center,
+            radius = mesh.geometry.boundingSphere.radius;
+
+        camera.position.z = radius * 3;
+
+        controls = new THREE.OrbitControls( mesh );
+        controls.target.set(center.x, center.y, center.z);
+        controls.minDistance = 0.5;
+        controls.maxDistance = 2000.0;
+
+        Object.assign(window, {mesh, controls});
+    }, undefined,
+        console.error); 
+       
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    this.renderer.gammaOutput = true;
+    this.renderer.gammaFactor = 2.2;
+    document.body.appendChild( renderer.domElement );
+
+    /*
+    controls = new THREE.OrbitControls( camera ); //, renderer.domElement );
+    controls.target.set(0, camera.position.y, 0);
+
+    controls.minDistance = 0.5;
+    controls.maxDistance = 2000.0;
+    //controls.dynamicDampingFactor = 1.0;
+    */
+    clock = new THREE.Clock();
+}
+
+function animate() {
+    var delta = clock.getDelta();
+
+//    setTimeout(animate, 20);
+    requestAnimationFrame( animate );
+
+    controls && controls.update(delta);
+    mixer && mixer.update(delta);
+
+    renderer.render( scene, camera );
+
+}
+        </script>
+    </body>
+</html>

@@ -1,0 +1,8 @@
+{
+	"name": "webgl.scene",
+	"main": "index.html",
+	"dependencies": {
+		"gltf-to-glb": "^0.1.0",
+		"three": "^0.106.2"
+	}
+}
