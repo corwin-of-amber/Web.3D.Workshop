@@ -11,10 +11,22 @@
         margin:0;
         overflow:hidden;
       }
+      #panel {
+        position: absolute;
+        left: 20px;
+        top: 20px;
+      }
     </style>
   </head>
 
   <body>
+
+    <div id="panel">
+      <select id="selector">
+        <option value="cone">Cone</option>
+        <option value="squareColumn">Square column</option>
+      </select>
+    </div>
 
     <script>
       //Creates scene and camera
@@ -36,8 +48,8 @@
 			lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
 
 			lights[ 0 ].position.set( 0, 200, 0 );
-			lights[ 1 ].position.set( 100, 200, 100 );
-			lights[ 2 ].position.set( - 100, - 200, - 100 );
+			lights[ 1 ].position.set( 200, 200, 100 );
+			lights[ 2 ].position.set( - 200, - 200, - 100 );
 
 			scene.add( lights[ 0 ] );
 			scene.add( lights[ 1 ] );
@@ -60,10 +72,26 @@
       scene.add( cube );
 
       // Enter Cone
-      var geometry = new THREE.ConeGeometry( 1, 2, 60 );
-      var cone = new THREE.Mesh( geometry, material );
-      scene.add( cone );
-      cone.position.y = 1;
+      var actors = [];
+
+      class Inventory {
+        static cone() { enter(new THREE.ConeGeometry( 1, 2, 60 ), 1); }
+        static squareColumn() { enter(new THREE.BoxGeometry( 1, 2, 1 ), 1); }
+      }
+
+      Inventory.cone();
+
+      function enter(geometry, y) {
+        var mesh = new THREE.Mesh( geometry, material );
+        scene.add( mesh );
+        mesh.position.y = 1;
+        actors.push(mesh);
+      }
+
+      function clear() {
+        for (let a of actors) scene.remove(a);
+        actors = [];
+      }
 
       function render() {
         controls.update();
@@ -80,6 +108,11 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
 			}, false );
+
+      document.getElementById('selector').addEventListener( 'change', (ev) => {
+        clear();
+        Inventory[ev.target.value]();
+      });
 
       render();
     </script>
