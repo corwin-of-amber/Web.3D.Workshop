@@ -11,10 +11,22 @@
         margin:0;
         overflow:hidden;
       }
+      #panel {
+        position: absolute;
+        left: 20px;
+        top: 20px;
+      }
     </style>
   </head>
 
   <body>
+
+    <div id="panel">
+      <select id="selector">
+        <option value="cone">Cone</option>
+        <option value="squareColumn">Square column</option>
+      </select>
+    </div>
 
     <script>
       //Creates scene and camera
@@ -36,8 +48,8 @@
 			lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
 
 			lights[ 0 ].position.set( 0, 200, 0 );
-			lights[ 1 ].position.set( 100, 200, 100 );
-			lights[ 2 ].position.set( - 100, - 200, - 100 );
+			lights[ 1 ].position.set( 200, 200, 100 );
+			lights[ 2 ].position.set( - 200, - 200, - 100 );
 
 			scene.add( lights[ 0 ] );
 			scene.add( lights[ 1 ] );
@@ -51,13 +63,6 @@
 
       controls.update();
 
-      let modelsData = [
-        {type: 'box', size:[5, 0.1, 5]},
-        {type:'cone', size:[1,2]}
-      ]
-      let connectionsData = [
-        {to: {model:0, face:0, location: [0,0]}, from:{model:1, face:0, location:[0,0]} }
-      ]
       // ACTION!
       // ACT I: The floor and the cone
       // Enter Floor
@@ -72,7 +77,7 @@
       scene.add( cone );
       cone.position.y = 1;*/
 
-      class Model{
+      class Actor{
         constructor(geometry, material){
           this.mesh = new THREE.Mesh( geometry, material );
         }
@@ -88,7 +93,7 @@
           return this.faces[index];
         }
       }
-      class Box extends Model{
+      class Box extends Actor{
         constructor(size, material){
           let geometry = new THREE.BoxGeometry( ...size );
           super(geometry, material);
@@ -99,7 +104,7 @@
           ]
         }
       }
-      class Cone extends Model{
+      class Cone extends Actor{
         constructor(size, material){
           let geometry = new THREE.ConeGeometry( ...size, 60 );
           super(geometry, material);
@@ -124,20 +129,28 @@
         }
       }
 
-      let material = new THREE.MeshLambertMaterial( { color: 0x156289, emissive: 0x072534 } );
-      let models = modelsData.map(modelData => {
-          let model = createModelFromData(modelData, material)
-          model.addToScene(scene)
-          return model;
-      })
-      let connections = connectionsData.map(connectionData => {
-          let modelTo = models[connectionData.to.model]
-          let faceTo = modelTo.getFace(0);
-          let modelFrom = models[connectionData.from.model]
-          let faceFrom = modelFrom.getFace(0);
-          console.log(faceFrom.normal.y*faceFrom.position.y + faceTo.normal.y*faceTo.position.y)
-          modelFrom.setPosition(0,faceTo.normal.y*faceTo.position.y - faceFrom.normal.y*faceFrom.position.y,0)
-      })
+      let models = [], connections = [];
+
+      function clear(){
+        models.forEach(model => scene.remove(model.mesh));
+        models = []
+      }
+      function load(sceneData){
+        let material = new THREE.MeshLambertMaterial( { color: 0x156289, emissive: 0x072534 } );
+        models = sceneData["models"].map(modelData => {
+            let model = createModelFromData(modelData, material)
+            model.addToScene(scene)
+            return model;
+        })
+        connections = sceneData["connections"].map(connectionData => {
+            let modelTo = models[connectionData.to.model]
+            let faceTo = modelTo.getFace(0);
+            let modelFrom = models[connectionData.from.model]
+            let faceFrom = modelFrom.getFace(0);
+            console.log(faceFrom.normal.y*faceFrom.position.y + faceTo.normal.y*faceTo.position.y)
+            modelFrom.setPosition(0,faceTo.normal.y*faceTo.position.y - faceFrom.normal.y*faceFrom.position.y,0)
+        })
+      }
       function render() {
         controls.update();
 
@@ -153,6 +166,35 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
 			}, false );
+
+      let scenes = [
+        {
+          models: [
+            {type: 'box', size:[5, 0.1, 5]},
+            {type:'cone', size:[1,2]}
+          ],
+          connections: [
+            {to: {model:0, face:0, location: [0,0]}, from:{model:1, face:0, location:[0,0]} }
+          ]
+        },
+        {
+          models: [
+            {type: 'box', size:[5, 0.1, 5]},
+            {type: 'box', size:[1, 2, 1]},
+          ],
+          connections: [
+            {to: {model:0, face:0, location: [0,0]}, from:{model:1, face:0, location:[0,0]} }
+          ]
+        }
+      ]
+      document.getElementById('selector').addEventListener( 'change', function(ev){
+        clear();
+        load(scenes[this.selectedIndex]);
+        //Inventory[ev.target.value]();
+      });
+      window.addEventListener('load', ()=>{
+        load(scenes[0]);
+      })
 
       render();
     </script>
