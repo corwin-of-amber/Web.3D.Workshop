@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { BluePrint } from './blueprint';
 import './index.css';
+import { OtherControls } from './controls';
 
 
 
@@ -11,23 +12,25 @@ class Scene {
     scene: THREE.Scene
     camera: THREE.PerspectiveCamera
     renderer: THREE.Renderer
-    controls: OrbitControls
+    controls: OtherControls
     clock: THREE.Clock
 
     constructor() {
         var scene = new THREE.Scene();
         scene.background = new THREE.Color( 0x505050 );
 
-        var camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 0.1, 1000 );    
+        var camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 0.1, 1000 );
+        camera.target = new THREE.Vector3( 0, 0, 0 );
+        //camera.position.set(8, 4, 8);
         camera.position.set(8, 4, 8);
 
         // Lights!
         var lights = [];
-        lights[ 0 ] = new THREE.AmbientLight( 0xffffff, 0.7 );
+        lights[ 0 ] = new THREE.AmbientLight( 0xffffff, 0.1 );
         lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
         lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-        lights[ 3 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-        lights[ 4 ] = new THREE.DirectionalLight( 0xffffff, 0.1 );    
+        lights[ 3 ] = new THREE.PointLight( 0xffffff, 1, 0.1 );
+        lights[ 4 ] = new THREE.DirectionalLight( 0xffffff, 0.1 );
 
         lights[ 1 ].position.set( 0, 200, 0 );
         lights[ 2 ].position.set( 200, 200, 100 );
@@ -44,16 +47,16 @@ class Scene {
         renderer.setSize( window.innerWidth, window.innerHeight );
         renderer.setPixelRatio( window.devicePixelRatio );
         container.appendChild( renderer.domElement );
-  
+
         this.renderer = renderer;
 
-        this.controls = new OrbitControls( this.camera, renderer.domElement );
+        this.controls = new OtherControls( this.camera, renderer.domElement );
 
         window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize( window.innerWidth, window.innerHeight );
-        }, false );        
+        }, false );
 
         this.clock = new THREE.Clock();
 
