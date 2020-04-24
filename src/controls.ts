@@ -60,11 +60,11 @@ class OtherControls{
     /*
     TODO: something here!
     */
-    var vector = new THREE.Vector3();//new THREE.Vector3( 1, 0, 0 );
-    vector.subVectors( this.camera.startPosition, this.camera.target );
-    vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.Math.degToRad(this.lon) );
+    var vector = new THREE.Vector3(8,4,8);//new THREE.Vector3( 1, 0, 0 );
+    //vector.subVectors( this.camera.startPosition, this.camera.target );
     vector.applyAxisAngle( new THREE.Vector3( 1, 0, 0 ), THREE.Math.degToRad(this.lat) );
-    this.camera.position.set(vector.x, vector.y, vector.z);
+    vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.Math.degToRad(this.lon) );
+    this.camera.position.copy(vector);
 
 		this.camera.lookAt( this.camera.target );
 	}
