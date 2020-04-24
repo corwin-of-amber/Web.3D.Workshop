@@ -40,8 +40,8 @@ class OtherControls{
 			let clientX = event.clientX || event.touches[ 0 ].clientX;
 			let clientY = event.clientY || event.touches[ 0 ].clientY;
 
-			this.lon = ( this.onMouseDownMouseX - clientX ) * 0.1 + this.onMouseDownLon;
-			this.lat = ( clientY - this.onMouseDownMouseY ) * 0.1 + this.onMouseDownLat;
+			this.lon = ( this.onMouseDownMouseX - clientX ) * 0.5 + this.onMouseDownLon;
+			this.lat = ( this.onMouseDownMouseY - clientY) * 0.5 + this.onMouseDownLat;
 		}
 	}
 	onPointerUp() {
@@ -60,9 +60,12 @@ class OtherControls{
     /*
     TODO: something here!
     */
+    var vector = new THREE.Vector3();//new THREE.Vector3( 1, 0, 0 );
+    vector.subVectors( this.camera.startPosition, this.camera.target );
+    vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.Math.degToRad(this.lon) );
+    vector.applyAxisAngle( new THREE.Vector3( 1, 0, 0 ), THREE.Math.degToRad(this.lat) );
+    this.camera.position.set(vector.x, vector.y, vector.z);
 
-    this.camera.position.set(8+this.lat, 4, 8);
-    
 		this.camera.lookAt( this.camera.target );
 	}
 }

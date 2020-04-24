@@ -21,6 +21,7 @@ class Scene {
 
         var camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 0.1, 1000 );
         camera.target = new THREE.Vector3( 0, 0, 0 );
+        camera.startPosition = new THREE.Vector3( 8, 4, 8 );
         //camera.position.set(8, 4, 8);
         camera.position.set(8, 4, 8);
 
