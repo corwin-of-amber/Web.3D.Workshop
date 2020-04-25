@@ -36,24 +36,26 @@ class OtherControls{
 		registerEvent(document, ['mouseup', 'touchend'], 'onPointerUp', this );
 	}
 
-	onPointerStart(event: MouseEvent & TouchEvent) {
-		var x = event.clientX || event.touches[ 0 ].clientX,
-		    y = event.clientY || event.touches[ 0 ].clientY;
+	onPointerStart(event: MouseEvent | TouchEvent) {
+		let {x,y} = this._getXY(event);
 		this.gesture = {x, y, lon: this.lon, lat: this.lat};
 	}
 
-	onPointerMove(event: MouseEvent & TouchEvent) {
+	onPointerMove(event: MouseEvent | TouchEvent) {
 		if (this.gesture) {
-			let x = event.clientX || event.touches[ 0 ].clientX,
-				y = event.clientY || event.touches[ 0 ].clientY;
-
-			this.lon = ( this.gesture.x - x ) * 0.5 + this.gesture.lon;
-			this.lat = ( this.gesture.y - y) * 0.5 + this.gesture.lat;
+			let {x,y} = this._getXY(event);
+			this.lon = (this.gesture.x - x) * 0.5 + this.gesture.lon;
+			this.lat = (this.gesture.y - y) * 0.5 + this.gesture.lat;
 		}
 	}
 
 	onPointerUp() {
 		this.gesture = null;
+	}
+
+	_getXY(event: MouseEvent | TouchEvent) {
+		var c = (event instanceof MouseEvent) ? event : event.touches[0];
+		return {x: c.clientX, y: c.clientY};
 	}
 
 	update() {
