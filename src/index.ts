@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { BluePrint } from './blueprint';
+import { Blueprint } from './blueprint';
 import './index.css';
 import { OtherControls } from './controls';
 
@@ -75,8 +74,13 @@ class Scene {
 
 
 function main() {
-    var blueprint = new BluePrint();
-    blueprint.create('cone', 1);
+    var svg = document.querySelector('#panel svg'),
+        mark = svg.querySelector('.mark');
+    for (let shape of svg.querySelectorAll('.sketch *')) {
+        mark.appendChild(shape.cloneNode());
+    }
+    var blueprint = new Blueprint();
+    blueprint.create(svg.querySelector('[name=cone]'), 1);
 
     var scene = new Scene();
     for (let o of blueprint.objects) scene.scene.add(o);
@@ -86,13 +90,27 @@ function main() {
 
     scene.render();
 
-    document.getElementById('selector').addEventListener( 'change', (ev) => {
+    var selector = <any>document.getElementById('selector');
+
+    function select(shape: SVGElement) {
         blueprint.clear();
-        blueprint.create((<any>ev.target).value, 1);
+        blueprint.create(shape, 1);
+    }
+
+    selector.addEventListener( 'change', (ev) => {
+        blueprint.clear();
+        var name = selector.value;
+        select(svg.querySelector(`[name=${name}]`));
+    });
+
+    mark.addEventListener('click', ev => {
+        var shape = (<SVGElement>ev.target); 
+        selector.value = shape.getAttribute('name');
+        select(shape);
     });
 
     Object.assign(window, {blueprint, scene});
 }
 
 
-Object.assign(window, {main});
+Object.assign(window, {main, THREE});

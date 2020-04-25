@@ -2,111 +2,41 @@
     <head>
         <title>My first three.js app</title>
 
-        <!-- <script src="./node_modules/nwjs-kremlin/reload.js"></script> -->
-        <style>
-            body { margin: 0; }
-            canvas { width: 100%; height: 100% }
-        </style>
+        <script src="src/index.ts"></script>
     </head>
     <body>
-        <!--
-        <script src="node_modules/three/build/three.js"></script>
-        
-        <script src="js/loaders/STLLoader.js"></script>
-        <script src="js/loaders/OBJLoader.js"></script>
-        <script src="node_modules/three/examples/js/loaders/GLTFLoader.js"></script>
-        <script src="node_modules/three/examples/js/controls/TrackballControls.js"></script>
-        <script src="node_modules/three/examples/js/controls/OrbitControls.js"></script>
--->
-
-        <!-- <script src="js/shader.js"></script> -->
-
         <div id="panel">
             <select id="selector">
               <option value="cone">Cone</option>
-              <option value="squareColumn">Square column</option>
+              <option value="box">Square column</option>
             </select>
+
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200">
+                <g class="grid">
+                    <path d="M-100 -75 l200 0"/>
+                    <path d="M-100 -50 l200 0"/>
+                    <path d="M-100 -25 l200 0"/>
+                    <path d="M-100 0 l200 0"/>
+                    <path d="M-100 25 l200 0"/>
+                    <path d="M-100 50 l200 0"/>
+                    <path d="M-100 75 l200 0"/>
+                    <path d="M-75 -100 l0 200"/>
+                    <path d="M-50 -100 l0 200"/>
+                    <path d="M-25 -100 l0 200"/>
+                    <path d="M0 -100 l0 200"/>
+                    <path d="M25 -100 l0 200"/>
+                    <path d="M50 -100 l0 200"/>
+                    <path d="M75 -100 l0 200"/>
+                </g>
+                <g class="sketch">
+                    <circle name="cone" cx="0" cy="0" r="40"/>
+                    <rect name="box" x="-15" y="-15" height="30" width="30"/>
+                </g>
+                <g class="mark">
+                </g>
+            </svg>
         </div>
       
-        <script src="src/index.ts"></script>
-        <script>
-var camera, scene, renderer, controls;
-var geometry, material, mesh, mixer, clock;
-
-
-function init() {
-    
-    //scene.add( new THREE.HemisphereLight( 0xffffff, 0x080820, 0.5 ) );
-
-    var light0 = new THREE.AmbientLight( 0xFFFFFF, 0.7 );
-    scene.add( light0 );
-    
-    var light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
-    light1.position.set( -0.5, -0.5, 0.866 ); //.normalize();
-    scene.add( light1 );
-    /*
-    var light2 = new THREE.DirectionalLight( 0xffffff );
-    light2.position.set( -4, 1, 2 ).normalize();
-    scene.add( light2 );
-    */
-    material = new THREE.MeshLambertMaterial({ color: 0x404080 });
-
-    /*
-    var materialColor = new THREE.Color();
-    materialColor.setRGB(1.0, 0.8, 0.6);
-
-    material = createShaderMaterial("phong", light1, light0);
-    material.uniforms.uMaterialColor.value.copy(materialColor);
-    material.side = THREE.FrontSide;
-    */
-
-    /*
-    geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
-    mesh = new THREE.Mesh( geometry, material );
-    scene.add( mesh );
-    */
-
-    /*
-    var loader = new THREE.STLLoader();
-    loader.load('models/utah.stl', (stl) => {
-        console.log(stl);
-        var mesh = new THREE.Mesh(stl, material);
-        scene.add(mesh);
-
-        mesh.geometry.computeBoundingSphere();
-        var center = mesh.geometry.boundingSphere.center,
-            radius = mesh.geometry.boundingSphere.radius;
-
-        camera.position.z = radius * 3;
-
-        controls = new THREE.OrbitControls( mesh );
-        controls.target.set(center.x, center.y, center.z);
-        controls.minDistance = 0.5;
-        controls.maxDistance = 2000.0;
-
-        Object.assign(window, {mesh, controls});
-    }, undefined,
-        console.error); 
-       
-
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
-    renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-    this.renderer.gammaOutput = true;
-    this.renderer.gammaFactor = 2.2;
-    document.body.appendChild( renderer.domElement );
-    */
-    /*
-    controls = new THREE.OrbitControls( camera ); //, renderer.domElement );
-    controls.target.set(0, camera.position.y, 0);
-
-    controls.minDistance = 0.5;
-    controls.maxDistance = 2000.0;
-    //controls.dynamicDampingFactor = 1.0;
-    */
-}
-
-main();
-        </script>
+        <script> main(); </script>
     </body>
 </html>
