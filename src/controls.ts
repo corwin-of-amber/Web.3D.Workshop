@@ -8,44 +8,52 @@ let registerEvent = (object, eventNames, handler, scope) => {
 }
 
 class OtherControls{
-  camera: THREE.PerspectiveCamera
-  element: HTMLDivElement
-  isUserInteracting: Boolean
-  lon:Number,
-  lat:Number
-  constructor(camera, element) {
-    this.lon = 0;
-    this.lat = 0;
-    this.camera = camera;
-    this.element = element;
-    this.bindEvents();
-  }
-  bindEvents(){
+
+	camera: THREE.PerspectiveCamera
+	element: HTMLElement
+	lon: number
+	lat: number
+	startPosition: THREE.Vector3
+	lookAt: THREE.Vector3
+
+	gesture: {x: number, y: number, lon: number, lat: number}
+	spin: {lon: number}
+
+	constructor(camera: THREE.PerspectiveCamera, element: HTMLElement) {
+		this.lon = 0;
+		this.lat = 0;
+		this.camera = camera;
+		this.element = element;
+		this.startPosition = this.camera.position.clone();
+		this.lookAt = new THREE.Vector3(0, 0, 0);
+		this.gesture = null;
+		this.bindEvents();
+	}
+
+	bindEvents(){
 		registerEvent(this.element, ['mousedown', 'touchstart'], 'onPointerStart', this );
 		registerEvent(document, ['mousemove', 'touchmove'], 'onPointerMove', this );
 		registerEvent(document, ['mouseup', 'touchend'], 'onPointerUp', this );
 	}
-	onPointerStart( event ) {
-		this.isUserInteracting = true;
-		var clientX = event.clientX || event.touches[ 0 ].clientX;
-		var clientY = event.clientY || event.touches[ 0 ].clientY;
-		this.onMouseDownMouseX = clientX;
-		this.onMouseDownMouseY = clientY;
-		this.onMouseDownLon = this.lon;
-		this.onMouseDownLat = this.lat;
+
+	onPointerStart(event: MouseEvent & TouchEvent) {
+		var x = event.clientX || event.touches[ 0 ].clientX,
+		    y = event.clientY || event.touches[ 0 ].clientY;
+		this.gesture = {x, y, lon: this.lon, lat: this.lat};
 	}
 
-	onPointerMove( event ) {
-		if ( this.isUserInteracting === true ) {
-			let clientX = event.clientX || event.touches[ 0 ].clientX;
-			let clientY = event.clientY || event.touches[ 0 ].clientY;
+	onPointerMove(event: MouseEvent & TouchEvent) {
+		if (this.gesture) {
+			let x = event.clientX || event.touches[ 0 ].clientX,
+				y = event.clientY || event.touches[ 0 ].clientY;
 
-			this.lon = ( this.onMouseDownMouseX - clientX ) * 0.5 + this.onMouseDownLon;
-			this.lat = ( this.onMouseDownMouseY - clientY) * 0.5 + this.onMouseDownLat;
+			this.lon = ( this.gesture.x - x ) * 0.5 + this.gesture.lon;
+			this.lat = ( this.gesture.y - y) * 0.5 + this.gesture.lat;
 		}
 	}
+
 	onPointerUp() {
-		this.isUserInteracting = false;
+		this.gesture = null;
 	}
 
 	update() {
@@ -57,16 +65,19 @@ class OtherControls{
 		this.camera.target.y = 500 * Math.cos( phi );
 		this.camera.target.z = 500 * Math.sin( phi ) * Math.sin( theta );*/
 
-    /*
-    TODO: something here!
-    */
-    var vector = new THREE.Vector3(8,4,8);//new THREE.Vector3( 1, 0, 0 );
-    //vector.subVectors( this.camera.startPosition, this.camera.target );
-    vector.applyAxisAngle( new THREE.Vector3( 1, 0, 0 ), THREE.Math.degToRad(this.lat) );
-    vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.Math.degToRad(this.lon) );
-    this.camera.position.copy(vector);
 
-		this.camera.lookAt( this.camera.target );
+		if (this.spin) {
+		 	this.lon += this.spin.lon;
+			if (this.gesture) this.gesture.lon += this.spin.lon;
+		}
+
+    	var vector = this.startPosition.clone();
+		//vector.subVectors( this.camera.startPosition, this.camera.target );
+		vector.applyAxisAngle( new THREE.Vector3( 1, 0, 0 ), THREE.Math.degToRad(this.lat) );
+		vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.Math.degToRad(this.lon) );
+		this.camera.position.copy(vector);
+
+		this.camera.lookAt( this.lookAt );
 	}
 }
 

@@ -20,9 +20,6 @@ class Scene {
         scene.background = new THREE.Color( 0x505050 );
 
         var camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 0.1, 1000 );
-        camera.target = new THREE.Vector3( 0, 0, 0 );
-        camera.startPosition = new THREE.Vector3( 8, 4, 8 );
-        //camera.position.set(8, 4, 8);
         camera.position.set(8, 4, 8);
 
         // Lights!
@@ -52,6 +49,7 @@ class Scene {
         this.renderer = renderer;
 
         this.controls = new OtherControls( this.camera, renderer.domElement );
+        this.controls.spin = {lon: 0.2};
 
         window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
