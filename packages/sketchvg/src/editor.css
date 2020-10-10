@@ -1,0 +1,50 @@
+
+#panel > svg {
+    background-color: aliceblue;
+}
+#panel > svg .grid {
+    stroke: #ccf;
+}
+#panel > svg .grid path {
+    vector-effect: non-scaling-stroke;
+    stroke-width: 1px;
+}
+#panel > svg .draw {
+    fill: none;
+    stroke: blue;
+}
+
+svg *:focus {
+    outline: none;
+}
+
+#panel > svg .mark {
+    stroke-width: 7px;
+    stroke: #000;
+    fill: none;
+}
+#panel > svg .mark > * {
+    opacity: 0;
+    transition: opacity ease-in-out 0.2s;
+}
+#panel > svg .mark > circle:hover,
+#panel > svg .mark > rect:hover,
+#panel > svg .mark > path:hover {
+    opacity: 0.25;
+}
+
+#panel > svg .ctrl {
+    stroke: #000;
+    fill: #fff;
+}
+
+#panel > svg .ctrl circle.knob {
+    vector-effect: non-scaling-stroke;
+    r: 0.8mm;
+    stroke-width: 1px;
+}
+
+#panel > svg .ctrl circle.knob:hover {
+    stroke-width: 2px;
+    fill: #ddd;
+}
