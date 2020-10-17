@@ -1,3 +1,6 @@
+import _ from 'lodash';
+import Flatten from '@flatten-js/core';
+
 
 
 class Polyline {
@@ -32,6 +35,17 @@ class Polyline {
         v.sides[0] = side;
         return side;
     }
+
+    get sides() { return this.itersides(); }
+    *itersides() {
+        for (let v of this.vertices)
+            if (v.sides[0]) yield v.sides[0];
+    }
+
+    hitTest(at: Point2D) {
+        return _.minBy([...this.sides].map(l => ({side:l, ...l.hitTest(at)}))
+                       .filter(x => x.at), h => h.dist)
+    }
 }
 
 
@@ -52,10 +66,20 @@ abstract class Side {
         return (includeStart ? this.endpoints[0].toPath() : '') + this._cmd();
     }
     abstract _cmd(): string
+    abstract hitTest(at: Point2D): {dist: number, at: Point2D};
 }
 
 class StraightSide extends Side {
     _cmd() { return `L${this.endpoints[1].toPath()}`; }
+    hitTest(at: Point2D) {
+        let [d, seg] = Flatten.point(at.x, at.y)
+                       .distanceTo(this._segment);
+        return {dist: d, at: seg.pe};
+    }
+    get _segment() {
+        let [p1, p2] = this.endpoints;
+        return Flatten.segment(p1.at.x, p1.at.y, p2.at.x, p2.at.y);
+    }
 }
 
 

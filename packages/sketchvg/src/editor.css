@@ -44,6 +44,12 @@ svg *:focus {
     stroke-width: 1px;
 }
 
+#panel > svg .ctrl circle.knob.ephemeral {
+    r: 0.5mm;
+    stroke: #88f;
+    fill: #ff9a;
+}
+
 #panel > svg .ctrl circle.knob:hover {
     stroke-width: 2px;
     fill: #ddd;
