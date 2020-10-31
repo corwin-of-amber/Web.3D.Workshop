@@ -53,6 +53,23 @@ class Polyline {
                        .filter(x => x.at), h => h.dist)
     }
 
+    removeVertex(u: Vertex) {
+        var idx = this.vertices.indexOf(u);
+        if (idx >= 0) {
+            var [before, after] = u.sides;
+            if (before) {
+                if (after)
+                    (before.endpoints[1] = after.endpoints[1]).sides[0] = before;
+                else
+                    before.endpoints[0].sides[1] = null;
+            }
+            else if (after) {
+                after.endpoints[1].sides[0] = null;
+            }
+            this.vertices.splice(idx, 1);
+        }
+    }
+
     /* EJSON */
     typeName() { return Polyline.name; }
     toJSONValue() {

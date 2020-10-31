@@ -57,6 +57,12 @@ class PolylineComponent extends ShapeComponent {
         knob.on('move', ({at}) => {
             u.at = at; this.update();
         });
+        knob.on('mousedown', (ev) => {
+            if (ev.altKey) {
+                this.onto.removeControl(knob);
+                this.shape.removeVertex(u); this.update();
+            }
+        });
         return knob;
     }
 
