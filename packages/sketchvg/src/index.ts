@@ -25,12 +25,13 @@ function main() {
         ctrl = svg.querySelector('.ctrl'); */
     var p = new PolylineComponent(sketch, shape);
 
-    sketch.addComponent(p);
+    p.on('click', (ev) => {
+        sketch.select(p); p.hit(ev.at);
+    });
     sketch.on('mousedown', (ev) => {
         if (ev.altKey && sketch.selection.has(p)) p.edit(ev.at);
         else sketch.deselectAll();
     });
-    //sketch.on('mousedown', ev => p.edit(ev.at));
 
     window.addEventListener('beforeunload', () => save(p.shape));
 

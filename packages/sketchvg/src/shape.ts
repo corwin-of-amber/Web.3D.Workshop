@@ -1,3 +1,4 @@
+import assert from 'assert';
 import _ from 'lodash';
 import EJSON from 'ejson';
 import Flatten from '@flatten-js/core';
@@ -7,9 +8,13 @@ import Flatten from '@flatten-js/core';
 class Polyline {
     vertices: Vertex[] = []
 
-    createVertex(at: Point2D, side?: Side) {
+    createVertex(at: Point2D, end = Direction.FORWARD, side?: Side) {
         var u = new Vertex(at);
-        this.addVertex(u);
+        switch (end) {
+        case Direction.FORWARD: this.addVertex(u, side); break;
+        case Direction.BACKWARD: this.insertVertexBefore(u, null, side); break;
+        default: assert(false);
+        }
         return u;
     }
 
@@ -53,6 +58,40 @@ class Polyline {
                        .filter(x => x.at), h => h.dist)
     }
 
+    insertVertexAfter(u: Vertex, after: Vertex, side?: Side) {
+        if (after) {
+            var idx = this.vertices.indexOf(after), existingSide: Side;
+            if(idx >= 0) {
+                if (existingSide = after.sides[1]) {
+                    existingSide.endpoints[0] = u; u.sides[1] = existingSide;
+                }
+                this.vertices.splice(idx + 1, 0, u);
+                this.addSide(after, u, side);
+            }
+            else throw Error("vertex is not on shape");
+        }
+        else this.addVertex(u, side);
+    }
+
+    insertVertexBefore(u: Vertex, before: Vertex, side?: Side) {
+        if (before) {
+            var idx = this.vertices.indexOf(before), existingSide: Side;
+            if(idx >= 0) {
+                if (existingSide = before.sides[0]) {
+                    existingSide.endpoints[1] = u; u.sides[0] = existingSide;
+                }
+                this.vertices.splice(idx, 0, u);
+                this.addSide(u, before, side);
+            }
+            else throw Error("vertex is not on shape");
+        }
+        else {
+            var v = this.vertices[0];
+            this.vertices.unshift(u);
+            if (v) this.addSide(u, v, side);
+        }
+    }
+
     removeVertex(u: Vertex) {
         var idx = this.vertices.indexOf(u);
         if (idx >= 0) {
@@ -68,6 +107,18 @@ class Polyline {
             }
             this.vertices.splice(idx, 1);
         }
+    }
+
+    splitSide(side: Side, at: Point2D, end = Direction.FORWARD, newSide?: Side) {
+        var u = new Vertex(at);
+        switch (end) {
+        case Direction.FORWARD:
+            this.insertVertexAfter(u, side.endpoints[0], newSide); break;
+        case Direction.BACKWARD:
+            this.insertVertexBefore(u, side.endpoints[1], newSide); break;
+        default: assert(false);
+        }
+        return u;
     }
 
     /* EJSON */
@@ -90,6 +141,8 @@ class Polyline {
 }
 
 EJSON.addType(Polyline.name, Polyline.fromJSONValue);
+
+enum Direction { FORWARD, BACKWARD };
 
 
 class Vertex {
@@ -118,6 +171,7 @@ abstract class Side {
     }
     abstract _cmd(): string
     abstract hitTest(at: Point2D): {dist: number, at: Point2D};
+    abstract getDirection(toward: Point2D): Direction;
 }
 
 class StraightSide extends Side {
@@ -132,6 +186,17 @@ class StraightSide extends Side {
         return Flatten.segment(p1.at.x, p1.at.y, p2.at.x, p2.at.y);
     }
 
+    /**
+     * If point is closer to the start, Direction.FORWARD.
+     * If closer to end, Direction.BACKWARD.
+     * @param toward test point
+     */
+    getDirection(toward: Point2D) {
+        var seg = this._segment, q = Flatten.point(toward.x, toward.y),
+            [d0, d1] = seg.vertices.map(p => p.distanceTo(q)[0]);
+        return d0 < d1 ? Direction.FORWARD : Direction.BACKWARD;
+    }
+
     /* EJSON */
     typeName() { return StraightSide.name; }
     toJSONValue() { return {}; }
@@ -144,4 +209,4 @@ EJSON.addType(StraightSide.name, StraightSide.fromJSONValue);
 type Point2D = {x: number, y: number};
 
 
-export { Polyline, Vertex, Side, StraightSide, Point2D }
+export { Polyline, Vertex, Side, StraightSide, Direction, Point2D }

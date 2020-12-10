@@ -36,10 +36,6 @@ class SketchComponent extends EventEmitter {
         this.svg.on('mousedown', ev => this.onMouseDown(ev));
     }
 
-    addComponent(component: ShapeComponent) {
-        component.on('click', () => this.select(component));
-    }
-
     addShape(shape: JQuery<SVGElement>) {
         var shadow = shape.clone();
         this.draw.append(shape);
@@ -68,9 +64,13 @@ class SketchComponent extends EventEmitter {
     }
 
     onMouseDown(ev: JQuery.MouseDownEvent) {
-        var evat: SketchEvent<JQuery.MouseDownEvent> = ev;
+        this.emit(ev.type, this._mkMouseEvent(ev));
+    }
+
+    _mkMouseEvent<E extends JQuery.MouseEventBase>(ev: E) {
+        var evat: SketchEvent<E> = ev;
         evat.at = $svg.coordDOMToSVG(this.svg, ev.offsetX, ev.offsetY);
-        this.emit(ev.type, evat);
+        return evat;
     }
 }
 
@@ -82,6 +82,9 @@ interface SketchComponent {
 abstract class ControlWidget extends EventEmitter {
     el: JQuery<SVGCircleElement>
     mounted() { }
+
+    hide(tog = true) { this.el.toggleClass('ctrl--hide', tog); }
+    unhide() { this.hide(false); }
 }
 
 class Knob extends ControlWidget {
