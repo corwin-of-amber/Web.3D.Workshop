@@ -1,51 +1,40 @@
-import $ from 'jquery';
-import EJSON from 'ejson';
-
 import { Polyline } from './shape';
 import { SketchComponent } from './components/sketch';
-import { PolylineComponent } from './components/shape';
+import { PolylineComponent, ShapeComponent } from './components/shape';
 import './editor.css';
 
 
-function main() {
-    var shape = new Polyline();
-    shape.createVertex({x: -75, y: 75});
-    shape.createVertex({x: -45, y: 25});
-    shape.createVertex({x:   0, y: 50});
-    //shape.weld();
+class SketchEditor {
+    sketch: SketchComponent
+    shapes: ShapeComponent[]
 
-    shape = load() || shape;
+    constructor(svg: JQuery<SVGSVGElement>) {
+        this.sketch = new SketchComponent(svg);
+        this.shapes = [];
+        this._bindEvents();
+    }
 
-    var sketch = new SketchComponent($<SVGSVGElement>('#panel svg'));
+    _bindEvents() {
+        this.sketch.on('mousedown', (ev) => {
+            if (ev.altKey && this.sketch.selection.size > 0) {
+                let p = this.sketch.selection.values().next().value;  /** @oops has type `any` */
+                p.edit(ev.at);
+            }
+            else {
+                this.sketch.deselectAll();
+            }
+        });
+    }
 
-    /*
-    var svg = pad.svg[0], //document.querySelector('#panel svg'),
-        sketch = svg.querySelector('.sketch'),
-        mark = svg.querySelector('.mark'),
-        ctrl = svg.querySelector('.ctrl'); */
-    var p = new PolylineComponent(sketch, shape);
-
-    p.on('click', (ev) => {
-        sketch.select(p); p.hit(ev.at);
-    });
-    sketch.on('mousedown', (ev) => {
-        if (ev.altKey && sketch.selection.has(p)) p.edit(ev.at);
-        else sketch.deselectAll();
-    });
-
-    window.addEventListener('beforeunload', () => save(p.shape));
-
-    Object.assign(window, {p, EJSON});
+    newPolyline(shape: Polyline) {
+        var p = new PolylineComponent(this.sketch, shape);
+        p.on('click', (ev) => {
+            this.sketch.select(p); p.hit(ev.at);
+        });
+        this.shapes.push(p);
+        return p;
+    }
 }
 
-function load() {
-    var l = localStorage['editing-shape'];
-    return l && EJSON.parse(l);
-}
 
-function save(p: any) {
-    if (p)
-        localStorage['editing-shape'] = EJSON.stringify(p);
-}
-
-$(main);
+export { SketchEditor }
