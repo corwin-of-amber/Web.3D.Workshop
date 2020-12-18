@@ -4,12 +4,15 @@ import { Blueprint } from './blueprint';
 import './index.css';
 import { OtherControls } from './controls';
 
+import { SketchEditor } from '../packages/sketchvg/src/index';
+
 
 
 class Scene {
 
     scene: THREE.Scene
     camera: THREE.PerspectiveCamera
+    lights: THREE.Light[]
     renderer: THREE.Renderer
     controls: OtherControls
     clock: THREE.Clock
@@ -22,12 +25,13 @@ class Scene {
         camera.position.set(8, 4, 8);
 
         // Lights!
-        var lights = [];
-        lights[ 0 ] = new THREE.AmbientLight( 0xffffff, 0.1 );
-        lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-        lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-        lights[ 3 ] = new THREE.PointLight( 0xffffff, 1, 0.1 );
-        lights[ 4 ] = new THREE.DirectionalLight( 0xffffff, 0.1 );
+        var lights: THREE.Light[] = [
+            new THREE.AmbientLight( 0xffffff, 0.1 ),
+            new THREE.PointLight( 0xffffff, 1, 0 ),
+            new THREE.PointLight( 0xffffff, 1, 0 ),
+            new THREE.PointLight( 0xffffff, 1, 0.1 ),
+            new THREE.DirectionalLight( 0xffffff, 0.1 )
+        ];
 
         lights[ 1 ].position.set( 0, 200, 0 );
         lights[ 2 ].position.set( 200, 200, 100 );
@@ -40,7 +44,7 @@ class Scene {
     }
 
     render(container = document.body) {
-        var renderer = new THREE.WebGLRenderer();
+        var renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize( window.innerWidth, window.innerHeight );
         renderer.setPixelRatio( window.devicePixelRatio );
         container.appendChild( renderer.domElement );
@@ -48,7 +52,7 @@ class Scene {
         this.renderer = renderer;
 
         this.controls = new OtherControls( this.camera, renderer.domElement );
-        this.controls.spin = {lon: 0.2};
+        //this.controls.spin = {lon: 0.2};
 
         window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -65,7 +69,7 @@ class Scene {
         const render = () => {
             this.controls.update();
             this.renderer.render(this.scene, this.camera);
-            requestAnimationFrame( render );
+            setTimeout( render, 200 );
         };
         render();
     }
@@ -73,14 +77,44 @@ class Scene {
 }
 
 
+import { Polyline } from '../packages/sketchvg/src/shape';
+import EJSON from 'ejson';
+import $ from 'jquery';
+
+
+function createSVGEditor() {
+    var shape = new Polyline();
+    shape.createVertex({x: -75, y: 75});
+    shape.createVertex({x: -45, y: 25});
+    shape.createVertex({x:   0, y: 50});
+    //shape.weld();
+
+    shape = load() || shape;
+
+    var editor = new SketchEditor($<SVGSVGElement>('#panel svg')),
+        p = editor.newPolyline(shape);
+
+    window.addEventListener('beforeunload', () => save(shape));
+
+    return editor;
+}
+
+function load() {
+    var l = localStorage['editing-shape'];
+    return l && EJSON.parse(l);
+}
+
+function save(p: any) {
+    if (p)
+        localStorage['editing-shape'] = EJSON.stringify(p);
+}
+
 function main() {
-    var svg = document.querySelector('#panel svg'),
-        mark = svg.querySelector('.mark');
-    for (let shape of svg.querySelectorAll('.sketch *')) {
-        mark.appendChild(shape.cloneNode());
-    }
+    var editor = createSVGEditor(),
+        svg = editor.sketch.svg[0];
+
     var blueprint = new Blueprint();
-    blueprint.create(svg.querySelector('[name=cone]'), 1);
+    //blueprint.create(svg.querySelector('[name=cone]'), 1);
 
     var scene = new Scene();
     for (let o of blueprint.objects) scene.scene.add(o);
@@ -97,6 +131,7 @@ function main() {
         blueprint.create(shape, 1);
     }
 
+    /*
     selector.addEventListener( 'change', (ev) => {
         blueprint.clear();
         var name = selector.value;
@@ -108,8 +143,9 @@ function main() {
         selector.value = shape.getAttribute('name');
         select(shape);
     });
+    */
 
-    Object.assign(window, {blueprint, scene});
+    Object.assign(window, {blueprint, scene, editor});
 }
 
 

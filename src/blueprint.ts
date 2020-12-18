@@ -1,5 +1,8 @@
+import assert from 'assert';
 import { EventEmitter } from 'events';
+import _ from 'lodash';
 import * as THREE from 'three';
+import { Point2D, Polyline, StraightSide } from '../packages/sketchvg/src/shape';
 
 
 
@@ -16,7 +19,8 @@ class Blueprint extends EventEmitter {
         this.floor = this.createFloor();
     }
 
-    add(mesh: THREE.Mesh, y = 0) {
+    add(obj: THREE.Mesh | THREE.Geometry, y = 0) {
+        var mesh = obj instanceof THREE.Mesh ? obj : this.factory.mesh(obj);
         mesh.position.y = y;
         this.emit('collection:add', mesh);
         this.objects.push(mesh);
@@ -50,7 +54,11 @@ class ObjectFactory {
     material = ObjectFactory.defaultMaterial();
 
     static defaultMaterial(): THREE.Material {
-        return new THREE.MeshLambertMaterial( { color: 0x404080, emissive: 0x072534 } );
+        return new THREE.MeshPhongMaterial( { color: 0x404080, emissive: 0x072534,
+            /*polygonOffset: true,
+            polygonOffsetFactor: 20, // positive value pushes polygon further away
+            polygonOffsetUnits: 1        */
+        } );
     }
 
     fromShape(shape: SVGElement, surface: THREE.Mesh) {
@@ -77,8 +85,77 @@ class ObjectFactory {
         return this.mesh(g);
     }
 
+    surfaceOfRevolution(shape: Polyline, hsects: number, vsects: number) {
+        var g = new THREE.CylinderGeometry(1, 1, 1, hsects, vsects),
+            curve = this.curveOfPolyline(shape);
+        for (let v of g.vertices) {
+            let p = curve(v.y + 0.5);  // v.y is in range [-.5, .5]
+            v.x = v.x * p.x;   // scale (x,z) by p.x
+            v.z = v.z * p.x;
+            v.y = -p.y;
+        }
+        return g.scale(.01, .01, .01);
+    }
+
+    curveOfSegment(ps: Point2D, pe: Point2D) {
+        return (r: number) => ({x: ps.x * (1 - r) + pe.x * r,
+                                y: ps.y * (1 - r) + pe.y * r});
+    }
+
+    curveOfPolyline(poly: Polyline) {
+        var sides = [...poly.sides] as StraightSide[];
+        assert(sides.every(s => s instanceof StraightSide), 'not implemented for non-straight sides');
+
+        var lengths = sides.map(s => s._segment.length),
+            acc = lengths[0];
+        // compute all accumulated lengths
+        for (var i = 1, size = lengths.length; i < size; ++i) {
+            lengths[i] = acc = acc + lengths[i];
+        }
+        return (r: number) => {
+            var atlen = r * acc,
+                i = lengths.findIndex(l => atlen <= l);
+            assert(i >= 0);
+            var start = lengths[i - 1] || 0, end = lengths[i],
+                {ps, pe} = sides[i]._segment;
+            return this.curveOfSegment(ps, pe)((atlen - start) / (end - start));
+        }        
+    }
+
     mesh(geometry: THREE.Geometry, material = this.material) {
         return new THREE.Mesh(geometry, material);
+    }
+
+    _offsetMaterial(material: THREE.Material | THREE.Material[]) {
+        if (Array.isArray(material))
+            return material.map(m => this._offsetMaterial(m));
+        var m = material.clone();
+        m.polygonOffset = true;
+        m.polygonOffsetFactor = 1;
+        m.polygonOffsetUnits = 1;
+        return m;
+    }
+
+    withWireframe(obj: THREE.Geometry | THREE.Mesh, material = this.material) {
+        var mesh = obj instanceof THREE.Mesh ? obj : this.mesh(obj, material),
+            geom = obj instanceof THREE.Mesh ? obj.geometry : obj;
+        assert(geom instanceof THREE.Geometry);
+        var w = this.wireframe(geom as THREE.Geometry);
+        mesh.material = this._offsetMaterial(mesh.material); // prevent z-fighting betweein lines and faces
+        mesh.add(w);
+        return mesh;
+    }
+
+    wireframe(geometry: THREE.Geometry) {
+        var geo = new THREE.WireframeGeometry( geometry ); // or WireframeGeometry( geometry )
+
+        var mat = new THREE.LineBasicMaterial( { color: 0xffffff, transparent: true, opacity: 0.3, linewidth: 5,
+            polygonOffset: true,
+            polygonOffsetFactor: -1, // positive value pushes polygon further away
+            polygonOffsetUnits: -1        
+        } );
+        
+        return new THREE.LineSegments( geo, mat );
     }
 
     sizeOf(surface: THREE.Mesh) {

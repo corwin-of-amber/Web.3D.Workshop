@@ -7,7 +7,7 @@ let registerEvent = (object, eventNames, handler, scope) => {
   })
 }
 
-class OtherControls{
+class OtherControls {
 
 	camera: THREE.PerspectiveCamera
 	element: HTMLElement

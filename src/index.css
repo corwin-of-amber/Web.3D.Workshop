@@ -7,27 +7,5 @@ html, body{
     position: absolute;
     left: 20px;
     top: 20px;
-}
-#panel > svg {
-    background-color: aliceblue;
-}
-#panel > svg .grid {
-    stroke: #ccf;
-}
-#panel > svg .sketch {
-    fill: none;
-    stroke: blue;
-}
-
-#panel > svg .mark {
-    stroke-width: 7px;
-    stroke: #000;
-    fill: none;
-}
-#panel > svg .mark > * {
-    opacity: 0;
-}
-#panel > svg .mark > circle:hover,
-#panel > svg .mark > rect:hover {
-        opacity: 0.25;
+    width: 30%;
 }
