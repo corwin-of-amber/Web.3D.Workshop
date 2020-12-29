@@ -1,7 +1,8 @@
 import assert from 'assert';
-import _ from 'lodash';
+import _, { flatten } from 'lodash';
 import EJSON from 'ejson';
 import Flatten from '@flatten-js/core';
+import { Bezier } from "bezier-js";
 
 
 
@@ -121,6 +122,12 @@ class Polyline {
         return u;
     }
 
+    replaceSide<S extends Side>(side: Side, newSide: S) {
+        side.endpoints[0].sides[1] = side.endpoints[1].sides[0] = newSide;
+        newSide.endpoints = side.endpoints.slice() as [Vertex, Vertex];
+        return newSide;
+    }
+
     /* EJSON */
     typeName() { return Polyline.name; }
     toJSONValue() {
@@ -157,7 +164,7 @@ class Vertex {
 
     /* EJSON */
     typeName() { return Vertex.name; }
-    toJSONValue() { return {x: this.at.x, y: this.at.y}; }
+    toJSONValue() { return xy(this.at); }
     static fromJSONValue(v: Point2D) { return new Vertex(v); }
 }
 
@@ -174,11 +181,11 @@ abstract class Side {
     abstract getDirection(toward: Point2D): Direction;
 }
 
+
 class StraightSide extends Side {
     _cmd() { return `L${this.endpoints[1].toPath()}`; }
     hitTest(at: Point2D) {
-        let [d, seg] = Flatten.point(at.x, at.y)
-                       .distanceTo(this._segment);
+        let [d, seg] = fp(at).distanceTo(this._segment);
         return {dist: d, at: seg.pe};
     }
     get _segment() {
@@ -206,7 +213,45 @@ class StraightSide extends Side {
 EJSON.addType(StraightSide.name, StraightSide.fromJSONValue);
 
 
+class BezierSide extends Side {
+    ctrl: Point2D[]
+    constructor(ctrl: Point2D[]) {
+        super();
+        assert(ctrl.length == 1);
+        this.ctrl = ctrl;
+    }
+    _cmd() { 
+        var [c1] = this.ctrl, ep = this.endpoints[1];
+        return `Q${c1.x} ${c1.y}, ${ep.toPath()}`;
+    }
+    hitTest(at: Point2D) {
+        var p = this._curve.project(at),
+            d = fp(p).distanceTo(fp(at));
+        return {dist: d[0], at: xy(p)};
+    }
+
+    get _curve() {
+        var [p0, p1] = this.endpoints;
+        return new Bezier(p0.at, this.ctrl[0], p1.at);
+    }
+
+    getDirection(toward: Point2D) { return Direction.FORWARD; }
+
+    /* EJSON */
+    typeName() { return BezierSide.name; }
+    toJSONValue() { return {ctrl: this.ctrl.map(xy)}; }
+    static fromJSONValue(v: {ctrl: Point2D[]}) {
+        return new BezierSide(v.ctrl);
+    }
+}
+
+EJSON.addType(BezierSide.name, BezierSide.fromJSONValue);
+
+
 type Point2D = {x: number, y: number};
 
+function fp(p: Point2D) { return Flatten.point(p.x, p.y); }
+function xy(p: Point2D) { return {x: p.x, y: p.y}; }
 
-export { Polyline, Vertex, Side, StraightSide, Direction, Point2D }
+
+export { Polyline, Vertex, Side, StraightSide, BezierSide, Direction, Point2D }

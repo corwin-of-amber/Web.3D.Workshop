@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import $ from 'jquery';
 
 import $svg from '../dom';
-import { Point2D, Polyline, Vertex, Side, Direction } from '../shape';
+import { Point2D, Polyline, Vertex, Side, Direction, BezierSide } from '../shape';
 import { SketchComponent, SketchEvent, Knob } from './sketch';
 
 
@@ -16,6 +16,7 @@ abstract class ShapeComponent extends EventEmitter {
 
 interface ShapeComponent {
     on(type: 'click', h: (ev: SketchEvent<JQuery.ClickEvent>) => void): this;
+    on(type: 'change', h: (t: this) => void): this;
 }
 
 
@@ -44,10 +45,12 @@ class PolylineComponent extends ShapeComponent {
         for (let e of this.elements) {
             $(e).attr('d', this.shape.toPath());
         }
+        this.emit('change');
     }
 
     select() {
-        this.knobs = this.shape.vertices.map(u => this._mkknob(u));
+        this.knobs = this.shape.vertices.map(u => this._mkknob(u)).concat(
+            ...[...this.shape.sides].map(s => this._mkctrls(s)));
     }
 
     deselect() {
@@ -57,7 +60,7 @@ class PolylineComponent extends ShapeComponent {
     }
 
     _mkknob(u: Vertex) {
-        var knob = new Knob(u.at);
+        var knob = new VertexKnob(u.at);
         this.onto.addControl(knob);
         knob.on('move', ({at}) => {
             this.unhit();  /** @todo only if affected */
@@ -76,14 +79,48 @@ class PolylineComponent extends ShapeComponent {
         return knob;
     }
 
+    _mkctrl(side: Side, at: Point2D, knob?: Knob) {
+        var bside = side instanceof BezierSide ? side
+            : this.shape.replaceSide(side, new BezierSide([at]));
+        if (!knob) {
+            this.onto.addControl(knob = new Knob(at, true, ['ephemeral']));
+        }
+        knob.on('move', ({at}) => {
+            bside.ctrl[0] = at;
+            this.update();
+            if (this.spot && this.spot !== knob) this.unhit();
+        });
+        return knob;
+    }
+
+    _mkctrls(side: Side) {
+        var at = side instanceof BezierSide ? side.ctrl : [];
+        return at.map(p => this._mkctrl(side, p));
+    }
+
+    _mkspot(at: Point2D, side: Side) {
+        var knob = new SpotKnob(at, side, !(side instanceof BezierSide),
+                                ['ephemeral']);
+        this.onto.addControl(knob);
+        var moveh = ({at}) => {
+            if (this.spot === knob) this.spot = undefined;
+            knob.removeListener('move', moveh)
+            this.knobs.push(this._mkctrl(side, at, knob));
+        };
+        knob.on('move', moveh);
+        return knob;
+    }
+
     hit(at: Point2D) {
         this.unhit();
 
-        let h = this.shape.hitTest(at),
-            knob = new SpotKnob(h.at, h.side, ['ephemeral']);
-        this.onto.addControl(knob);
-        this.spot = knob;
-        this.addDir = knob.residesOn.getDirection(h.at);
+        let h = this.shape.hitTest(at);
+        if (h) {
+            var knob = this._mkspot(h.at, h.side);
+            this.onto.addControl(knob);
+            this.spot = knob;
+            this.addDir = knob.residesOn.getDirection(h.at);
+        }
     }
 
     unhit() {
@@ -100,15 +137,20 @@ class PolylineComponent extends ShapeComponent {
     }
 }
 
+
+class VertexKnob extends Knob {
+
+}
+
 class SpotKnob<Obj> extends Knob {
     residesOn: Obj
 
-    constructor(at: Point2D, residesOn: Obj, cssClasses?: string[]) {
-        super(at, cssClasses);
+    constructor(at: Point2D, residesOn: Obj, mobile?: boolean, cssClasses?: string[]) {
+        super(at, mobile, cssClasses);
         this.residesOn = residesOn;
     }
 
-    mounted() { /** @oops disable dragging */ }
+    //mounted() { /** @oops disable dragging */ }
 }
 
 

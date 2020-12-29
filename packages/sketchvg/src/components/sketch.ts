@@ -88,19 +88,27 @@ abstract class ControlWidget extends EventEmitter {
 }
 
 class Knob extends ControlWidget {
-    constructor(at: Point2D, cssClasses: string[] = []) {
+    at: Point2D
+    mobile: boolean
+
+    constructor(at: Point2D, mobile = true, cssClasses: string[] = []) {
         super();
+        this.at = at;
+        this.mobile = mobile;
         this.el = $svg<SVGCircleElement>('circle').attr({cx: at.x, cy: at.y});
         this.el.addClass(['knob', ...cssClasses]);
         this.el.on('mousedown', ev => this.onMouseDown(ev));
     }
 
     mounted() {
-        $svg.draggable(this.el, {
-            drag: (event, ui: DraggableEventUIParams) => {
-                this.emit('move', {target: this, at: ui.center});
-            }
-        });
+        if (this.mobile) {
+            $svg.draggable(this.el, {
+                drag: (event, ui: DraggableEventUIParams) => {
+                    this.at = ui.center;
+                    this.emit('move', {target: this, at: this.at});
+                }
+            });
+        }
     }
 
     onMouseDown(ev: JQuery.MouseDownEvent) {
