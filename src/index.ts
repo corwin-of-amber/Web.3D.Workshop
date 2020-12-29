@@ -119,10 +119,12 @@ function main() {
 
     for (const sc of editor.shapes) {
         if (sc instanceof PolylineComponent) {
-            let compute = () => blueprint.factory.surfaceOfRevolution(sc.shape, 32, 20);
-            blueprint.add(
-                blueprint.factory.withWireframe(
-                    ReactiveSink.seq(sc.shape, compute, g => blueprint.factory.mesh(g))), 0.75);
+            let compute = (s: Polyline) => blueprint.factory.surfaceOfRevolution(s, 32, 20),
+                obj = blueprint.factory.withWireframe(
+                    ReactiveSink.seq(sc.shape, compute, g => blueprint.factory.mesh(g)));
+            blueprint.add(obj, 1.5);
+
+            sc.on('change', () => obj.update(sc.shape));
         }
     }
 

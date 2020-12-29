@@ -2,7 +2,8 @@ import assert from 'assert';
 import { EventEmitter } from 'events';
 import _ from 'lodash';
 import * as THREE from 'three';
-import { Point2D, Polyline, StraightSide } from '../packages/sketchvg/src/shape';
+import { BezierSide, Point2D, Polyline, Side, StraightSide } from '../packages/sketchvg/src/shape';
+import { Bezier } from 'bezier-js';
 
 
 
@@ -91,7 +92,7 @@ class ObjectFactory {
             v.z = v.z * p.x;
             v.y = -p.y;
         }
-        return g.scale(.01, .01, .01);
+        return g.scale(.02, .02, .02);
     }
 
     curveOfSegment(ps: Point2D, pe: Point2D) {
@@ -99,23 +100,45 @@ class ObjectFactory {
                                 y: ps.y * (1 - r) + pe.y * r});
     }
 
-    curveOfPolyline(poly: Polyline) {
-        var sides = [...poly.sides] as StraightSide[];
-        assert(sides.every(s => s instanceof StraightSide), 'not implemented for non-straight sides');
+    curveOfBezier(c: Bezier) {
+        return (r: number) => c.get(r);
+    }
 
-        var lengths = sides.map(s => s._segment.length),
+    curveOfSide(s: Side) {
+        var [p1, p2] = s.endpoints;
+        if (s instanceof StraightSide)
+            return this.curveOfSegment(p1.at, p2.at);
+        else if (s instanceof BezierSide)
+            return this.curveOfBezier(s._curve);
+        else
+            throw new Error(`unsupported side type, '${s.constructor.name}'`);
+    }
+
+    lengthOfSide(s: Side) {
+        if (s instanceof StraightSide)
+            return s._segment.length;
+        else if (s instanceof BezierSide)
+            return s._curve.length();
+        else
+            throw new Error(`unsupported side type, '${s.constructor.name}'`);
+    }
+
+    curveOfPolyline(poly: Polyline) {
+        var sides = [...poly.sides];
+
+        var lengths = sides.map(s => this.lengthOfSide(s)),
             acc = lengths[0];
         // compute all accumulated lengths
         for (var i = 1, size = lengths.length; i < size; ++i) {
             lengths[i] = acc = acc + lengths[i];
         }
+        var curves = sides.map(s => this.curveOfSide(s));
         return (r: number) => {
             var atlen = r * acc,
                 i = lengths.findIndex(l => atlen <= l);
             assert(i >= 0);
-            var start = lengths[i - 1] || 0, end = lengths[i],
-                {ps, pe} = sides[i]._segment;
-            return this.curveOfSegment(ps, pe)((atlen - start) / (end - start));
+            var start = lengths[i - 1] || 0, end = lengths[i];
+            return curves[i]((atlen - start) / (end - start));
         }        
     }
 
