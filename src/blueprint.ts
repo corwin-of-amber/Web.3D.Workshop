@@ -8,9 +8,9 @@ import { Point2D, Polyline, StraightSide } from '../packages/sketchvg/src/shape'
 
 class Blueprint extends EventEmitter {
 
-    objects: any[]
+    objects: RMesh<any>[]
     factory: ObjectFactory
-    floor: THREE.Mesh
+    floor: RMesh<any>
 
     constructor() {
         super();
@@ -19,16 +19,16 @@ class Blueprint extends EventEmitter {
         this.floor = this.createFloor();
     }
 
-    add(obj: THREE.Mesh | THREE.Geometry, y = 0) {
-        var mesh = obj instanceof THREE.Mesh ? obj : this.factory.mesh(obj);
+    add<S>(rmesh: RMesh<S>, y = 0) {
+        var mesh = rmesh.obj;
         mesh.position.y = y;
         this.emit('collection:add', mesh);
-        this.objects.push(mesh);
-        return mesh;
+        this.objects.push(rmesh);
+        return rmesh;
     }
 
     create(shape: SVGElement, y?: number, material?: THREE.Material) {
-        return this.add(this.factory.fromShape(shape, this.floor), y);
+        return this.add(this.factory.fromShape(shape, this.floor.obj), y);
     }
 
     createFloor() {
@@ -54,11 +54,8 @@ class ObjectFactory {
     material = ObjectFactory.defaultMaterial();
 
     static defaultMaterial(): THREE.Material {
-        return new THREE.MeshPhongMaterial( { color: 0x404080, emissive: 0x072534,
-            /*polygonOffset: true,
-            polygonOffsetFactor: 20, // positive value pushes polygon further away
-            polygonOffsetUnits: 1        */
-        } );
+        return new THREE.MeshPhongMaterial(
+            { color: 0x404080, emissive: 0x071524 });
     }
 
     fromShape(shape: SVGElement, surface: THREE.Mesh) {
@@ -123,7 +120,8 @@ class ObjectFactory {
     }
 
     mesh(geometry: THREE.Geometry, material = this.material) {
-        return new THREE.Mesh(geometry, material);
+        return new ReactiveMeshFromGeometry(
+            new THREE.Mesh(geometry, material));
     }
 
     _offsetMaterial(material: THREE.Material | THREE.Material[]) {
@@ -136,24 +134,25 @@ class ObjectFactory {
         return m;
     }
 
-    withWireframe(obj: THREE.Geometry | THREE.Mesh, material = this.material) {
-        var mesh = obj instanceof THREE.Mesh ? obj : this.mesh(obj, material),
-            geom = obj instanceof THREE.Mesh ? obj.geometry : obj;
-        assert(geom instanceof THREE.Geometry);
-        var w = this.wireframe(geom as THREE.Geometry);
+    withWireframe<S>(rmesh: RMesh<S>) {
+        var mesh = rmesh.obj,
+            geom = () => {
+                var geom = mesh.geometry; 
+                assert(geom instanceof THREE.Geometry);
+                return geom as THREE.Geometry;
+            };
+        var w = this.wireframe(geom());
         mesh.material = this._offsetMaterial(mesh.material); // prevent z-fighting betweein lines and faces
         mesh.add(w);
-        return mesh;
+        return ReactiveSink.par(rmesh, () => w.geometry = new THREE.WireframeGeometry(geom()));
     }
 
     wireframe(geometry: THREE.Geometry) {
-        var geo = new THREE.WireframeGeometry( geometry ); // or WireframeGeometry( geometry )
+        var geo = new THREE.WireframeGeometry( geometry );
 
-        var mat = new THREE.LineBasicMaterial( { color: 0xffffff, transparent: true, opacity: 0.3, linewidth: 5,
-            polygonOffset: true,
-            polygonOffsetFactor: -1, // positive value pushes polygon further away
-            polygonOffsetUnits: -1        
-        } );
+        var mat = new THREE.LineBasicMaterial(
+              { color: 0xffffff, transparent: true, opacity: 0.3,
+                linewidth: 5 });
         
         return new THREE.LineSegments( geo, mat );
     }
@@ -165,4 +164,41 @@ class ObjectFactory {
 
 
 
-export { Blueprint, ObjectFactory }
+type RMesh<Spec> = ReactiveSink<Spec, THREE.Mesh>
+
+
+class ReactiveSink<Spec, Obj> {
+    obj: Obj
+    update: (spec: Spec) => void
+
+    constructor(obj: Obj, update: (spec: Spec) => void) {
+        this.obj = obj;
+        this.update = update;
+    }
+
+    static seq<Pre, Spec, Obj, Sink extends ReactiveSink<Spec, Obj>>
+        (init: Pre, f: (pre: Pre) => Spec, mk: (spec: Spec) => Sink) {
+        let intermediate = mk(f(init));
+        return new ReactiveSink<Pre, Obj>(intermediate.obj,
+            (pre: Pre) => intermediate.update(f(pre)));
+    }
+
+    static par<Spec, Obj>
+        (sink: ReactiveSink<Spec, Obj>, f: (spec: Spec) => void) {
+        return new ReactiveSink<Spec, Obj>(sink.obj, (spec: Spec) => {
+            sink.update(spec); f(spec);
+        });
+    }
+}
+
+
+class ReactiveMeshFromGeometry extends ReactiveSink<THREE.Geometry, THREE.Mesh> {
+
+    constructor(mesh: THREE.Mesh) {
+        super(mesh, (geom: THREE.Geometry) => mesh.geometry = geom);
+    }
+}
+
+
+
+export { Blueprint, ObjectFactory, ReactiveSink, ReactiveMeshFromGeometry }

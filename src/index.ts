@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { Blueprint } from './blueprint';
+import { Blueprint, ReactiveSink } from './blueprint';
 import './index.css';
 import { OtherControls } from './controls';
 
@@ -29,14 +29,14 @@ class Scene {
             new THREE.AmbientLight( 0xffffff, 0.1 ),
             new THREE.PointLight( 0xffffff, 1, 0 ),
             new THREE.PointLight( 0xffffff, 1, 0 ),
-            new THREE.PointLight( 0xffffff, 1, 0.1 ),
-            new THREE.DirectionalLight( 0xffffff, 0.1 )
+            //new THREE.PointLight( 0xffffff, 1, 0.1 ),
+            //new THREE.DirectionalLight( 0xffffff, 0.1 )
         ];
 
         lights[ 1 ].position.set( 0, 200, 0 );
-        lights[ 2 ].position.set( 200, 200, 100 );
-        lights[ 3 ].position.set( -200, -200, -100 );
-        lights[ 4 ].position.set( -0.5, -0.5, 0.866 );
+        lights[ 2 ].position.set( -200, 200, -400 );
+        //lights[ 3 ].position.set( 200, 200, -100 );
+        //lights[ 4 ].position.set( 0.5, -0.5, -0.866 );
 
         for (let l of lights) scene.add(l);
 
@@ -80,6 +80,7 @@ class Scene {
 import { Polyline } from '../packages/sketchvg/src/shape';
 import EJSON from 'ejson';
 import $ from 'jquery';
+import { PolylineComponent } from '../packages/sketchvg/src/components/shape';
 
 
 function createSVGEditor() {
@@ -116,11 +117,20 @@ function main() {
     var blueprint = new Blueprint();
     //blueprint.create(svg.querySelector('[name=cone]'), 1);
 
-    var scene = new Scene();
-    for (let o of blueprint.objects) scene.scene.add(o);
+    for (const sc of editor.shapes) {
+        if (sc instanceof PolylineComponent) {
+            let compute = () => blueprint.factory.surfaceOfRevolution(sc.shape, 32, 20);
+            blueprint.add(
+                blueprint.factory.withWireframe(
+                    ReactiveSink.seq(sc.shape, compute, g => blueprint.factory.mesh(g))), 0.75);
+        }
+    }
 
-    blueprint.on('collection:remove', obj => scene.scene.remove(obj));
-    blueprint.on('collection:add', obj => scene.scene.add(obj));
+    var scene = new Scene();
+    for (let o of blueprint.objects) scene.scene.add(o.obj);
+
+    blueprint.on('collection:remove', o => scene.scene.remove(o.obj));
+    blueprint.on('collection:add', o => scene.scene.add(o.obj));
 
     scene.render();
 
