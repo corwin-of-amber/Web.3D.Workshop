@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { Blueprint, ReactiveSink } from './blueprint';
+import { Blueprint, ReactiveSink, RMesh } from './blueprint';
 import './index.css';
 import { OtherControls } from './controls';
 
@@ -33,8 +33,8 @@ class Scene {
             //new THREE.DirectionalLight( 0xffffff, 0.1 )
         ];
 
-        lights[ 1 ].position.set( 0, 200, 0 );
-        lights[ 2 ].position.set( -200, 200, -400 );
+        lights[ 1 ].position.set( 5, 2, -5 );
+        lights[ 2 ].position.set( -20, 20, -40 );
         //lights[ 3 ].position.set( 200, 200, -100 );
         //lights[ 4 ].position.set( 0.5, -0.5, -0.866 );
 
@@ -114,13 +114,18 @@ function main() {
     var editor = createSVGEditor(),
         svg = editor.sketch.svg[0];
 
-    var blueprint = new Blueprint();
-    //blueprint.create(svg.querySelector('[name=cone]'), 1);
+    var styles = {
+        plain: (x: RMesh<any>) => x,
+        wired: (x: RMesh<any>) => blueprint.factory.withWireframe(x)
+    };
+
+    var blueprint = new Blueprint(),
+        objStyle = 'wired';
 
     for (const sc of editor.shapes) {
         if (sc instanceof PolylineComponent) {
             let compute = (s: Polyline) => blueprint.factory.surfaceOfRevolution(s, 32, 20),
-                obj = blueprint.factory.withWireframe(
+                obj = styles[objStyle](
                     ReactiveSink.seq(sc.shape, compute, g => blueprint.factory.mesh(g)));
             blueprint.add(obj, 1.5);
 

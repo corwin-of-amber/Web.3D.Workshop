@@ -224,4 +224,4 @@ class ReactiveMeshFromGeometry extends ReactiveSink<THREE.Geometry, THREE.Mesh> 
 
 
 
-export { Blueprint, ObjectFactory, ReactiveSink, ReactiveMeshFromGeometry }
+export { Blueprint, ObjectFactory, ReactiveSink, ReactiveMeshFromGeometry, RMesh }
