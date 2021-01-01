@@ -75,8 +75,8 @@ class OtherControls {
 
     	var vector = this.startPosition.clone();
 		//vector.subVectors( this.camera.startPosition, this.camera.target );
-		vector.applyAxisAngle( new THREE.Vector3( 1, 0, 0 ), THREE.Math.degToRad(this.lat) );
-		vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.Math.degToRad(this.lon) );
+		vector.applyAxisAngle( new THREE.Vector3( 1, 0, 0 ), THREE.MathUtils.degToRad(this.lat) );
+		vector.applyAxisAngle( new THREE.Vector3( 0, 1, 0 ), THREE.MathUtils.degToRad(this.lon) );
 		this.camera.position.copy(vector);
 
 		this.camera.lookAt( this.lookAt );

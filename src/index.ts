@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
 import { Blueprint, ReactiveSink, RMesh } from './blueprint';
+import { TrackballControls } from './controls/TrackballControls';
 import './index.css';
-import { OtherControls } from './controls';
 
 import { SketchEditor } from '../packages/sketchvg/src/index';
 
@@ -14,7 +14,7 @@ class Scene {
     camera: THREE.PerspectiveCamera
     lights: THREE.Light[]
     renderer: THREE.Renderer
-    controls: OtherControls
+    controls: TrackballControls
     clock: THREE.Clock
 
     constructor() {
@@ -51,7 +51,9 @@ class Scene {
 
         this.renderer = renderer;
 
-        this.controls = new OtherControls( this.camera, renderer.domElement );
+        this.controls = new TrackballControls( this.camera, renderer.domElement );
+        this.controls.rotateSpeed = 1.0;
+        this.controls.mouseButtons.LEFT = 0; // ??
         //this.controls.spin = {lon: 0.2};
 
         window.addEventListener('resize', () => {
@@ -66,14 +68,47 @@ class Scene {
     }
 
     _renderLoop() {
-        const render = () => {
-            this.controls.update();
-            this.renderer.render(this.scene, this.camera);
-            setTimeout( render, 200 );
-        };
-        render();
+        var rl = new RenderLoop(() => {
+                var delta = this.clock.getDelta();
+                this.controls.update(delta * 30);
+                this.renderer.render(this.scene, this.camera);
+            },
+            () => this.controls.currSpeed > 0.0015);
+
+        this.controls.addEventListener( 'start', rl.urgent );
     }
 
+}
+
+class RenderLoop {
+    urgent = () => {}
+
+    constructor(eachFrame: () => void, high = () => false) {
+        var _fuel = 0,
+            fuel = () => (_fuel > 0) ? _fuel-- : 0,
+            _timeout: NodeJS.Timeout = undefined;
+
+        this.urgent = () => {
+            if (_timeout) {
+                clearTimeout(_timeout); _timeout = undefined;
+                requestAnimationFrame( render );
+            }
+            _fuel = 100;
+        };
+
+        const render = () => {
+            if (high() || fuel()) {
+                requestAnimationFrame( render );
+                _timeout = undefined;
+            }
+            else {
+                _timeout = setTimeout(render, 41);
+            }
+
+            eachFrame();
+        };
+        render();        
+    }
 }
 
 
