@@ -1,5 +1,6 @@
 {
 	"name": "webgl.scene",
+	"version": "0.1.0",
 	"main": "build/kremlin/index.html",
 	"dependencies": {
 		"@tweenjs/tween.js": "^18.5.0",
@@ -9,7 +10,7 @@
 		"jquery": "^3.5.1",
 		"jquery-ui-dist": "^1.12.1",
 		"lodash": "^4.17.20",
-		"three": "^0.106.2"
+		"three": "^0.124.0"
 	},
 	"devDependencies": {
 		"@types/jquery": "^3.3.38",
@@ -17,5 +18,8 @@
 		"@types/lodash": "^4.14.165",
 		"@types/node": "^13.13.0",
 		"typescript": "^4.0.5"
+	},
+	"app": {
+		"icon": "img/Icon.icns"
 	}
 }
