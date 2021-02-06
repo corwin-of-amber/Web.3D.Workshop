@@ -1,9 +1,24 @@
 import assert from 'assert';
-import _, { flatten } from 'lodash';
+import _ from 'lodash';
 import EJSON from 'ejson';
 import Flatten from '@flatten-js/core';
 import { Bezier } from "bezier-js";
 
+
+
+type Point2D = {x: number, y: number};
+
+namespace Point2D {
+    export function fp(p: Point2D) { return Flatten.point(p.x, p.y); }
+    export function xy(p: Point2D) { return {x: p.x, y: p.y}; }
+    export function scale(p: Point2D, scale: number) {
+        return {x: p.x * scale, y: p.y * scale};
+    }
+    export const O = {x: 0, y: 0};
+}
+
+import xy = Point2D.xy;
+import fp = Point2D.fp;
 
 
 class Polyline {
@@ -128,6 +143,19 @@ class Polyline {
         return newSide;
     }
 
+    /* Whole-shape transforms */
+
+    scale(scale: number | Point2D, epicenter?: Point2D) {
+        var o = epicenter || this.vertices[0]?.at || Point2D.O;
+        if (typeof scale === 'number') scale = {x: scale, y: scale};
+        var m = new Flatten.Matrix().translate(-o.x, -o.y)
+                                    .scale(scale.x, scale.y)
+                                    .translate(o.x, o.y);
+
+        for (let obj of [...this.vertices, ...this.sides])
+            obj.transform(m);
+    }
+
     /* EJSON */
     typeName() { return Polyline.name; }
     toJSONValue() {
@@ -162,6 +190,8 @@ class Vertex {
 
     toPath() { return `${this.at.x} ${this.at.y}`; }
 
+    transform(m: Flatten.Matrix) { this.at = fp(this.at).transform(m); }
+
     /* EJSON */
     typeName() { return Vertex.name; }
     toJSONValue() { return xy(this.at); }
@@ -179,6 +209,7 @@ abstract class Side {
     abstract _cmd(): string
     abstract hitTest(at: Point2D): {dist: number, at: Point2D};
     abstract getDirection(toward: Point2D): Direction;
+    abstract transform(m: Flatten.Matrix): void;
 }
 
 
@@ -203,6 +234,8 @@ class StraightSide extends Side {
             [d0, d1] = seg.vertices.map(p => p.distanceTo(q)[0]);
         return d0 < d1 ? Direction.FORWARD : Direction.BACKWARD;
     }
+
+    transform() { }
 
     /* EJSON */
     typeName() { return StraightSide.name; }
@@ -237,6 +270,10 @@ class BezierSide extends Side {
 
     getDirection(toward: Point2D) { return Direction.FORWARD; }
 
+    transform(m: Flatten.Matrix) {
+        this.ctrl = this.ctrl.map(p => fp(p).transform(m));
+    }
+
     /* EJSON */
     typeName() { return BezierSide.name; }
     toJSONValue() { return {ctrl: this.ctrl.map(xy)}; }
@@ -248,10 +285,27 @@ class BezierSide extends Side {
 EJSON.addType(BezierSide.name, BezierSide.fromJSONValue);
 
 
-type Point2D = {x: number, y: number};
+class Oval {
+    center: Point2D
+    radii:  Point2D
 
-function fp(p: Point2D) { return Flatten.point(p.x, p.y); }
-function xy(p: Point2D) { return {x: p.x, y: p.y}; }
+    constructor(center: Point2D = {x: 0, y: 0},
+                radii:  Point2D = {x: 1, y: 1}) {
+        this.center = center;
+        this.radii = radii;
+    }
+
+    get _circle() {
+        return new Flatten.Circle(fp(this.center), this.radii.x);
+    }
+
+    hitTest(at: Point2D) {
+        let [d, seg] = fp(at).distanceTo(this._circle);
+        return {dist: d, at: seg.pe};
+    }
+}
 
 
-export { Polyline, Vertex, Side, StraightSide, BezierSide, Direction, Point2D }
+
+export { Point2D, Polyline, Vertex, Side, StraightSide, BezierSide,
+         Direction, Oval }

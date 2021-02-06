@@ -2,16 +2,19 @@ import { EventEmitter } from 'events';
 import $ from 'jquery';
 
 import $svg from '../dom';
-import { Point2D, Polyline, Vertex, Side, Direction, BezierSide } from '../shape';
+import { Point2D, Polyline, Vertex, Side, BezierSide,
+         Direction, Oval } from '../shape';
 import { SketchComponent, SketchEvent, Knob } from './sketch';
+
+import fp = Point2D.fp;
 
 
 
 abstract class ShapeComponent extends EventEmitter {
-    abstract select(): void
+    abstract select(at?: Point2D): void
     abstract deselect(): void
-    abstract hit(at: Point2D): void
-    abstract edit(at: Point2D): void
+    abstract hit(at: Point2D): boolean
+    abstract edit(at: Point2D): boolean
 }
 
 interface ShapeComponent {
@@ -121,6 +124,7 @@ class PolylineComponent extends ShapeComponent {
             this.spot = knob;
             this.addDir = knob.residesOn.getDirection(h.at);
         }
+        return !!h;
     }
 
     unhit() {
@@ -134,7 +138,75 @@ class PolylineComponent extends ShapeComponent {
         this.spot?.hide?.();
         this.knobs.push(this._mkknob(u));
         this.update();
+        return true;
     }
+}
+
+
+class OvalComponent extends ShapeComponent {
+    onto: SketchComponent
+    shape: Oval
+    elements: JQuery<SVGElement>
+    knobs: Knob[]
+    spot: SpotKnob<Side>
+
+    constructor(onto: SketchComponent, shape: Oval) {
+        super();
+        this.onto = onto;
+        this.shape = shape;
+        this.elements = this.render();
+    }
+
+    render() {
+        var p = $svg('circle').attr(this._attrs())
+        return this.onto.addShape(p)
+            .on('click', (ev) => this.emit('click', this.onto._mkMouseEvent(ev)));
+    }
+
+    update() {
+        for (let e of this.elements) {
+            $(e).attr(this._attrs());
+        }
+        this.emit('change');
+    }
+
+    _attrs() { 
+        return {cx: this.shape.center.x, cy: this.shape.center.y, 
+                r: this.shape.radii.x};  /** @todo */
+    }
+
+    select(at?: Point2D) {
+        var cknob = new VertexKnob(this.shape.center),
+            rknob = new VertexKnob({x: this.shape.center.x + this.shape.radii.x, y: this.shape.center.y});
+        for (let knob of [cknob, rknob]) {
+            knob.on('move', () => {
+                this.shape.center = cknob.at;
+                /** @todo only circle for now */
+                this.shape.radii.x = this.shape.radii.y = 
+                    fp(rknob.at).distanceTo(fp(cknob.at))[0];
+                this.update();
+            });
+        }
+        this.onto.addControl(cknob);
+        this.onto.addControl(rknob);
+        this.knobs = [cknob, rknob];
+        if (at) this.hit(at);
+    }
+
+    deselect(): void {
+        if (this.knobs) this.knobs.forEach(k => this.onto.removeControl(k));
+        this.knobs = undefined;
+    }
+
+    hit(at: Point2D) {
+        var {at: kat} = this.shape.hitTest(at);
+        this.knobs[1].move(kat);
+        return true;
+    }
+
+    edit(at: Point2D) {
+        return false;
+    }    
 }
 
 
@@ -154,4 +226,5 @@ class SpotKnob<Obj> extends Knob {
 }
 
 
-export { ShapeComponent, PolylineComponent }
+
+export { ShapeComponent, PolylineComponent, OvalComponent }

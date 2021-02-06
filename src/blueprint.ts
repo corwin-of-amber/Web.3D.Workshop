@@ -2,7 +2,7 @@ import assert from 'assert';
 import { EventEmitter } from 'events';
 import _ from 'lodash';
 import * as THREE from 'three';
-import { BezierSide, Point2D, Polyline, Side, StraightSide } from '../packages/sketchvg/src/shape';
+import { BezierSide, Oval, Point2D, Polyline, Side, StraightSide } from '../packages/sketchvg/src/shape';
 import { Bezier } from 'bezier-js';
 
 
@@ -83,13 +83,22 @@ class ObjectFactory {
         return this.mesh(g);
     }
 
-    surfaceOfRevolution(shape: Polyline, hsects: number, vsects: number) {
-        var g = new THREE.CylinderGeometry(1, 1, 1, hsects, vsects),
-            curve = this.curveOfPolyline(shape);
+    surfaceOfRevolution(curveShape: Polyline, revolveShape: Oval, hsects: number, vsects: number) {
+        return this.surfaceOfRevolutionGen(
+            this.curveOfPolyline(curveShape),
+            this.revolveOfOval(revolveShape),
+            hsects, vsects);
+    }
+
+    surfaceOfRevolutionGen(curve: (r: number) => Point2D, 
+            revolve: (p: Point2D) => Point2D,
+            hsects: number, vsects: number) {
+        var g = new THREE.CylinderGeometry(1, 1, 1, hsects, vsects);
         for (let v of g.vertices) {
-            let p = curve(v.y + 0.5);  // v.y is in range [-.5, .5]
-            v.x = v.x * p.x;   // scale (x,z) by p.x
-            v.z = v.z * p.x;
+            let p = curve(v.y + 0.5),  // v.y is in range [-.5, .5]
+                q = revolve({x: v.x, y: v.z});  // q is a point on the perimeter
+            v.x = q.x * p.x / 100;   // scale q by p.x and assign to (x,z)
+            v.z = q.y * p.x / 100;
             v.y = -p.y;
         }
         return g.scale(.02, .02, .02);
@@ -142,9 +151,23 @@ class ObjectFactory {
         }        
     }
 
+    scaled2D<V>(f: (v: V) => Point2D, scale: number) {
+        return (v: V) => Point2D.scale(f(v), scale);
+    }
+
+    revolveOfOval(c: Oval) {
+        var {center, radii} = c;
+        return (p: Point2D) => ({x: center.x + p.x * radii.x,
+                                 y: center.y + p.y * radii.y});
+    }
+
     mesh(geometry: THREE.Geometry, material = this.material) {
         return new ReactiveMeshFromGeometry(
             new THREE.Mesh(geometry, material));
+    }
+
+    _mesh(geometry: THREE.Geometry, material = this.material) {
+        return new THREE.Mesh(geometry, material);
     }
 
     _offsetMaterial(material: THREE.Material | THREE.Material[]) {
@@ -190,13 +213,63 @@ class ObjectFactory {
 type RMesh<Spec> = ReactiveSink<Spec, THREE.Mesh>
 
 
-class ReactiveSink<Spec, Obj> {
+
+namespace Reactive {
+
+    export interface Value<Obj> {
+        set(v: Obj): void
+    }
+    
+    export class Source<Obj> implements Value<Obj> {
+        out: Dependency<Obj, any>[] = []
+    
+        set(v: Obj) {
+            for (let e of this.out) {
+                e.target.set(e.update(v));
+            }
+        }
+    }
+    
+    export type Dependency<From, To> = {
+        update: (v: From) => To
+        target: Value<To>
+    }
+
+    export function connect<From, To, TValue extends Value<To>>
+        (source: Source<From>, target: TValue, update: (v: From) => To) {
+        source.out.push({update, target});
+        return target;    
+    }
+
+    export function intermediate<From, To>(source: Source<From>, update: (v: From) => To) {
+        return connect(source, new Source<To>(), update);
+    }
+
+    export function sink<From, To>(source: Source<From>, update: (v: From) => To) {
+        return connect(source, new ReactiveSink<To, To>(null, x => x), update);
+    }
+
+    export function maintain<Obj, G>(create: (g: G) => Obj, update: (o: Obj, g: G) => void) {
+        var obj: Obj = undefined;
+        return (g: G) => {
+            if (obj) update(obj, g);
+            else obj = create(g);
+            return obj;
+        }
+    }
+}
+
+class ReactiveSink<Spec, Obj> implements Reactive.Value<Obj> {
     obj: Obj
     update: (spec: Spec) => void
 
     constructor(obj: Obj, update: (spec: Spec) => void) {
         this.obj = obj;
         this.update = update;
+    }
+
+    set(obj: Obj) {
+        this.obj = obj;
     }
 
     static seq<Pre, Spec, Obj, Sink extends ReactiveSink<Spec, Obj>>
@@ -224,4 +297,5 @@ class ReactiveMeshFromGeometry extends ReactiveSink<THREE.Geometry, THREE.Mesh> 
 
 
 
-export { Blueprint, ObjectFactory, ReactiveSink, ReactiveMeshFromGeometry, RMesh }
+export { Blueprint, ObjectFactory, Reactive,
+         ReactiveSink, ReactiveMeshFromGeometry, RMesh }

@@ -9,21 +9,33 @@ import { ShapeComponent } from './shape';
 
 class SketchComponent extends EventEmitter {
     svg: JQuery<SVGSVGElement>
+    grid: JQuery<SVGGElement>
     draw: JQuery<SVGGElement>
     mark: JQuery<SVGGElement>
     ctrl: JQuery<SVGGElement>
 
-    selection: Set<ShapeComponent> = new Set
-
     constructor(svg: JQuery<SVGSVGElement>) {
         super();
         this.svg = svg;
-        this.draw = $(svg[0].querySelector('.draw') as SVGGElement);
-        this.mark = $(svg[0].querySelector('.mark') as SVGGElement);
-        this.ctrl = $(svg[0].querySelector('.ctrl') as SVGGElement);
+        this.grid = $svg('g'); svg.append(this.grid.addClass('grid'));
+        this.draw = $svg('g'); svg.append(this.draw.addClass('draw'));
+        this.mark = $svg('g'); svg.append(this.mark.addClass('mark'));
+        this.ctrl = $svg('g'); svg.append(this.ctrl.addClass('ctrl'));
 
+        this.createGridLines();
         this.createMarkShadows();
         this.bindEvents();
+    }
+
+    createGridLines() {
+        var ln = [-75, -50, -25, 0, 25, 50, 75];
+
+        var gridlines = 
+              ln.map(y => $svg('path').attr('d', `M-100 ${y} l200 0`))
+            .concat(
+              ln.map(x => $svg('path').attr('d', `M${x} -100 l0 200`)));
+
+        this.grid.append(...gridlines);
     }
 
     createMarkShadows() {
@@ -50,17 +62,6 @@ class SketchComponent extends EventEmitter {
 
     removeControl(widget: ControlWidget) {
         widget.el.remove();
-    }
-
-    select(component: ShapeComponent) {
-        this.deselectAll();
-        component.select();
-        this.selection.add(component);
-    }
-
-    deselectAll() {
-        for (let c of this.selection) c.deselect();
-        this.selection.clear();
     }
 
     onMouseDown(ev: JQuery.MouseDownEvent) {
@@ -109,6 +110,13 @@ class Knob extends ControlWidget {
                 }
             });
         }
+    }
+
+    move(to: Point2D, dispatch=true) {
+        this.at = to;
+        this.el.attr({cx: to.x, cy: to.y});
+        if (dispatch)
+            this.emit('move', {target: this, at: this.at});
     }
 
     onMouseDown(ev: JQuery.MouseDownEvent) {

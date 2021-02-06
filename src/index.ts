@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { Blueprint, ReactiveSink, RMesh } from './blueprint';
+import { Blueprint, Reactive, ReactiveSink, RMesh, ReactiveMeshFromGeometry } from './blueprint';
 import { TrackballControls } from './controls/TrackballControls';
 import './index.css';
 
@@ -16,6 +16,8 @@ class Scene {
     renderer: THREE.Renderer
     controls: TrackballControls
     clock: THREE.Clock
+
+    renderLoop: RenderLoop
 
     constructor() {
         var scene = new THREE.Scene();
@@ -76,6 +78,7 @@ class Scene {
             () => this.controls.currSpeed > 0.0015);
 
         this.controls.addEventListener( 'start', rl.urgent );
+        this.renderLoop = rl;
     }
 
 }
@@ -112,59 +115,119 @@ class RenderLoop {
 }
 
 
-import { Polyline } from '../packages/sketchvg/src/shape';
 import EJSON from 'ejson';
 import $ from 'jquery';
-import { PolylineComponent } from '../packages/sketchvg/src/components/shape';
+import { Oval, Polyline } from '../packages/sketchvg/src/shape';
+import { OvalComponent, PolylineComponent, ShapeComponent } from '../packages/sketchvg/src/components/shape';
+
+import * as hastebin from 'hastebin/client';
 
 
-function createSVGEditor() {
+async function createSVGEditor() {
     var shape = new Polyline();
     shape.createVertex({x: -75, y: 75});
     shape.createVertex({x: -45, y: 25});
     shape.createVertex({x:   0, y: 50});
     //shape.weld();
 
-    shape = load() || shape;
+    shape = (await h.load()) || l.load() || shape;
 
-    var editor = new SketchEditor($<SVGSVGElement>('#panel svg')),
-        p = editor.newPolyline(shape);
+    var editor = {
+        curve: new SketchEditor($<SVGSVGElement>('#panel #curve')),
+        perimeter: new SketchEditor($<SVGSVGElement>('#panel #perimeter'))
+    };
+    editor.curve.newPolyline(shape);
 
-    window.addEventListener('beforeunload', () => save(shape));
+    editor.perimeter.newOval(new Oval({x: 0, y: 0}, {x: 75, y: 75}));
+
+    window.addEventListener('beforeunload', () => l.save(shape));
 
     return editor;
 }
 
-function load() {
-    var l = localStorage['editing-shape'];
-    return l && EJSON.parse(l);
+
+class LocalStore {
+    key: string;
+
+    constructor(key: string) { this.key = key; }
+
+    load() {
+        var l = localStorage[this.key];
+        return l && EJSON.parse(l);
+    }
+
+    save(p: any) {
+        p && (localStorage[this.key] = EJSON.stringify(p));
+    }
 }
 
-function save(p: any) {
-    if (p)
-        localStorage['editing-shape'] = EJSON.stringify(p);
+var l = new LocalStore('editing-shape');
+
+
+class HastebinShare {
+    h = new hastebin.haste();
+
+    save(p: any) {
+        var hd = this.h.getDocument();
+        return new Promise((resolve, reject) =>
+            hd.save(EJSON.stringify(p), 
+                (err: {}, ret: {}) => err ? reject(err) : resolve(ret)));
+    }
+
+    load(key?: string): Promise<any> {
+        key = key || window.location.search.slice(1);
+        if (!key) return undefined;
+        return new Promise(resolve => this.h.getDocument(key, (ret: any) =>
+            resolve(ret && EJSON.parse(ret.data))));
+    }
 }
 
-function main() {
-    var editor = createSVGEditor(),
-        svg = editor.sketch.svg[0];
+var h: HastebinShare;
 
-    var styles = {
-        plain: (x: RMesh<any>) => x,
-        wired: (x: RMesh<any>) => blueprint.factory.withWireframe(x)
-    };
 
-    var blueprint = new Blueprint(),
-        objStyle = 'wired';
+async function main() {
+    h = new HastebinShare;
+    h.h.config.baseURL = 'https://hastbp.herokuapp.com';
 
-    for (const sc of editor.shapes) {
-        if (sc instanceof PolylineComponent) {
-            let compute = (s: Polyline) => blueprint.factory.surfaceOfRevolution(s, 32, 20),
-                obj = styles[objStyle](
-                    ReactiveSink.seq(sc.shape, compute, g => blueprint.factory.mesh(g)));
-            blueprint.add(obj, 1.5);
+    var editor = await createSVGEditor();
 
-            sc.on('change', () => obj.update(sc.shape));
+    var blueprint = new Blueprint();
+
+    var sor = {
+        curve: editor.curve.shapes.find(sc => sc instanceof PolylineComponent),
+        revolve: editor.perimeter.shapes.find(sc => sc instanceof OvalComponent),
+    } as {curve: PolylineComponent, revolve: OvalComponent};
+
+    var objStyle = 'wired';
+
+    if (sor.curve && sor.revolve) {
+        let get = () => [sor.curve.shape, sor.revolve.shape] as [Polyline, Oval],
+            compute = ([s,r]: [Polyline, Oval]) =>
+                blueprint.factory.surfaceOfRevolution(s, r, 32, 20);
+
+        var u0 = new Reactive.Source<[Polyline, Oval]>(),
+            u1 = Reactive.intermediate(u0, compute),
+            u2 = Reactive.sink(u1, Reactive.maintain(
+                    g => blueprint.factory._mesh(g),
+                    (o, g) => o.geometry = g
+                ));
+
+        u0.set(get());
+
+        if (objStyle == 'wired') {
+            var u3 = Reactive.sink(u1, Reactive.maintain(
+                        g => blueprint.factory.wireframe(g),
+                        (o, g) => o.geometry = new THREE.WireframeGeometry(g)
+                    ));
+
+            u0.set(get());
+            u2.obj.material = blueprint.factory._offsetMaterial(u2.obj.material); // prevent z-fighting betweein lines and faces
+            u2.obj.add(u3.obj);
+        }
+
+        blueprint.add(u2, 1.5);
+        for (const sc of [sor.curve, sor.revolve] as ShapeComponent[]) {
+            sc.on('change', () => { u0.set(get()); scene.renderLoop.urgent(); });
         }
     }
 
@@ -197,7 +260,7 @@ function main() {
     });
     */
 
-    Object.assign(window, {blueprint, scene, editor});
+    Object.assign(window, {blueprint, scene, editor, sor, hastebin, h});
 }
 
 
