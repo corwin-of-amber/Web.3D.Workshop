@@ -118,14 +118,14 @@ class RenderLoop {
 import EJSON from 'ejson';
 import $ from 'jquery';
 import { Oval, Polyline } from '../packages/sketchvg/src/shape';
-import { OvalComponent, PolylineComponent, ShapeComponent } from '../packages/sketchvg/src/components/shape';
-import { StraightRuleComponent } from '../packages/sketchvg/src/components/rule';
+
+import { SoRBundles } from './blueprint/sor';
 
 import * as hastebin from '@corwin.amber/hastebin/src/client.js';  // TypeScript and Kremlin do not support "exports"  https://github.com/microsoft/TypeScript/issues/33079
 import '@corwin.amber/hastebin/static/application.css';
 
 
-async function createSVGEditor() {
+async function loadShape() {
     var shape = new Polyline();
     shape.createVertex({x: -75, y: 75});
     shape.createVertex({x: -45, y: 25});
@@ -134,18 +134,9 @@ async function createSVGEditor() {
 
     shape = (await h.load()) || l.load() || shape;
 
-    var editor = {
-        curve: new SketchEditor($<SVGSVGElement>('#panel #curve')),
-        perimeter: new SketchEditor($<SVGSVGElement>('#panel #perimeter'))
-    };
-    editor.curve.newPolyline(shape);
-    editor.curve.add(new StraightRuleComponent(editor.curve.sketch, {axis: 'x', at: 0}));
-
-    editor.perimeter.newOval(new Oval({x: 0, y: 0}, {x: 75, y: 75}));
-
     window.addEventListener('beforeunload', () => l.save(shape));
 
-    return editor;
+    return shape;
 }
 
 
@@ -192,19 +183,16 @@ async function main() {
     h = new HastebinShare;
     h.h.config.baseURL = 'https://hastbp.herokuapp.com';
 
-    var editor = await createSVGEditor();
+    var {bundles: sor} = SoRBundles.create($('#panel'), 
+        {outline: await loadShape()},
+        {perimeter: new Oval({x: 0, y: 0}, {x: 75, y: 75})});
 
     var blueprint = new Blueprint();
-
-    var sor = {
-        curve: editor.curve.shapes.find(sc => sc instanceof PolylineComponent),
-        revolve: editor.perimeter.shapes.find(sc => sc instanceof OvalComponent),
-    } as {curve: PolylineComponent, revolve: OvalComponent};
 
     var objStyle = 'wired';
 
     if (sor.curve && sor.revolve) {
-        let get = () => [sor.curve.shape, sor.revolve.shape] as [Polyline, Oval],
+        let get = () => [sor.curve.outline.shape, sor.revolve.perimeter.shape] as [Polyline, Oval],
             compute = ([s,r]: [Polyline, Oval]) =>
                 blueprint.factory.surfaceOfRevolution(s, r, 32, 20);
 
@@ -229,7 +217,7 @@ async function main() {
         }
 
         blueprint.add(u2, 1.5);
-        for (const sc of [sor.curve, sor.revolve] as ShapeComponent[]) {
+        for (const sc of sor.components) {
             sc.on('change', () => { u0.set(get()); scene.renderLoop.urgent(); });
         }
     }
@@ -263,7 +251,7 @@ async function main() {
     });
     */
 
-    Object.assign(window, {blueprint, scene, editor, sor, hastebin, h});
+    Object.assign(window, {blueprint, scene, sor, hastebin, h});
 }
 
 
