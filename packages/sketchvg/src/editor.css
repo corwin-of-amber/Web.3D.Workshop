@@ -58,3 +58,9 @@ svg *:focus {
     stroke-width: 2px;
     fill: #ddd;
 }
+
+#panel > svg .draw path.rule {
+    vector-effect: non-scaling-stroke;
+    stroke-width: 1px;
+    stroke: #f008;
+}

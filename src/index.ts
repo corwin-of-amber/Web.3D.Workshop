@@ -119,6 +119,7 @@ import EJSON from 'ejson';
 import $ from 'jquery';
 import { Oval, Polyline } from '../packages/sketchvg/src/shape';
 import { OvalComponent, PolylineComponent, ShapeComponent } from '../packages/sketchvg/src/components/shape';
+import { StraightRuleComponent } from '../packages/sketchvg/src/components/rule';
 
 import * as hastebin from 'hastebin/client';
 
@@ -137,6 +138,7 @@ async function createSVGEditor() {
         perimeter: new SketchEditor($<SVGSVGElement>('#panel #perimeter'))
     };
     editor.curve.newPolyline(shape);
+    editor.curve.add(new StraightRuleComponent(editor.curve.sketch, {axis: 'x', at: 0}));
 
     editor.perimeter.newOval(new Oval({x: 0, y: 0}, {x: 75, y: 75}));
 

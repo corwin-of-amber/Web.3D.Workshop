@@ -23,25 +23,54 @@ interface ShapeComponent {
 }
 
 
-class PolylineComponent extends ShapeComponent {
+/**
+ * Abstract base class for shape components with constructor.
+ */
+abstract class ShapeComponentBase<Shape> extends ShapeComponent {
     onto: SketchComponent
-    shape: Polyline
+    shape: Shape
     elements: JQuery<SVGElement>
+    knobs: Knob[]
+
+    constructor(onto: SketchComponent, shape: Shape) {
+        super();
+        this.onto = onto;
+        this.shape = shape;
+        this.elements = this._render();
+    }
+
+    abstract render(): JQuery<SVGElement>
+
+    deselect(): void {
+        if (this.knobs) this.knobs.forEach(k => this.onto.removeControl(k));
+        this.knobs = undefined;        
+    }
+
+    hit(at: Point2D): boolean  { return false; }
+    edit(at: Point2D): boolean { return false; }
+
+    update() {
+        this.emit('change');
+    }
+
+    /**
+     * Low-level render function, calls `render()` and places result on drawing area.
+     * @returns rendered SVG elements
+     */
+    _render() {
+        return this.onto.addShape(this.render())
+            .on('click', (ev) => this.emit('click', this.onto._mkMouseEvent(ev)));
+    }
+}
+
+
+class PolylineComponent extends ShapeComponentBase<Polyline> {
     knobs: Knob[]
     spot: SpotKnob<Side>
     addDir: Direction = Direction.FORWARD
 
-    constructor(onto: SketchComponent, shape: Polyline) {
-        super();
-        this.onto = onto;
-        this.shape = shape;
-        this.elements = this.render();
-    }
-
     render() {
-        var p = $svg('path').attr('d', this.shape.toPath());
-        return this.onto.addShape(p)
-            .on('click', (ev) => this.emit('click', this.onto._mkMouseEvent(ev)));
+        return $svg('path').attr('d', this.shape.toPath());
     }
 
     update() {
@@ -176,8 +205,8 @@ class OvalComponent extends ShapeComponent {
     }
 
     select(at?: Point2D) {
-        var cknob = new VertexKnob(this.shape.center),
-            rknob = new VertexKnob({x: this.shape.center.x + this.shape.radii.x, y: this.shape.center.y});
+        var cknob = new Knob(this.shape.center),
+            rknob = new Knob({x: this.shape.center.x + this.shape.radii.x, y: this.shape.center.y});
         for (let knob of [cknob, rknob]) {
             knob.on('move', () => {
                 this.shape.center = cknob.at;
@@ -227,4 +256,4 @@ class SpotKnob<Obj> extends Knob {
 
 
 
-export { ShapeComponent, PolylineComponent, OvalComponent }
+export { ShapeComponent, ShapeComponentBase, PolylineComponent, OvalComponent }
