@@ -3,6 +3,7 @@
 	"version": "0.1.0",
 	"main": "build/kremlin/index.html",
 	"dependencies": {
+		"@corwin.amber/hastebin": "^0.1.0",
 		"@tweenjs/tween.js": "^18.5.0",
 		"bezier-js": "^4.0.3",
 		"ejson": "^2.2.0",
@@ -17,7 +18,7 @@
 		"@types/jqueryui": "^1.12.10",
 		"@types/lodash": "^4.14.165",
 		"@types/node": "^13.13.0",
-		"typescript": "^4.0.5"
+		"typescript": "^4.2.3"
 	},
 	"app": {
 		"icon": "img/Icon.icns"

@@ -121,7 +121,8 @@ import { Oval, Polyline } from '../packages/sketchvg/src/shape';
 import { OvalComponent, PolylineComponent, ShapeComponent } from '../packages/sketchvg/src/components/shape';
 import { StraightRuleComponent } from '../packages/sketchvg/src/components/rule';
 
-import * as hastebin from 'hastebin/client';
+import * as hastebin from '@corwin.amber/hastebin/src/client.js';  // TypeScript and Kremlin do not support "exports"  https://github.com/microsoft/TypeScript/issues/33079
+import '@corwin.amber/hastebin/static/application.css';
 
 
 async function createSVGEditor() {
