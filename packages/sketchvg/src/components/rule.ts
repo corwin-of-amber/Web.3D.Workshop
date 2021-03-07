@@ -1,6 +1,6 @@
 import { Point2D } from '../shape';
 import $svg from '../dom';
-import { ShapeComponentBase } from './shape';
+import { ShapeComponentBaseWithAttrs } from './shape';
 import { Knob } from './sketch';
 
 
@@ -10,18 +10,6 @@ type StraightRule = {
     at: number,       // meaning: axis:'x' is a *vertical* rule, axis:'y' is *horizontal* (isn't math fun)
     role?: string
 };
-
-
-abstract class ShapeComponentBaseWithAttrs<Shape> extends ShapeComponentBase<Shape> {
-    update() {
-        for (let e of this.elements) {
-            $(e).attr(this._attrs());
-        }
-        super.update();
-    }
-
-    abstract _attrs(): {}
-}
 
 
 class StraightRuleComponent extends ShapeComponentBaseWithAttrs<StraightRule> {

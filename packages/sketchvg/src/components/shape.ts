@@ -3,7 +3,7 @@ import $ from 'jquery';
 
 import $svg from '../dom';
 import { Point2D, Polyline, Vertex, Side, BezierSide,
-         Direction, Oval } from '../shape';
+         Direction, Oval, Parallelogram } from '../shape';
 import { SketchComponent, SketchEvent, Knob } from './sketch';
 
 import fp = Point2D.fp;
@@ -61,6 +61,18 @@ abstract class ShapeComponentBase<Shape> extends ShapeComponent {
         return this.onto.addShape(this.render())
             .on('click', (ev) => this.emit('click', this.onto._mkMouseEvent(ev)));
     }
+}
+
+
+abstract class ShapeComponentBaseWithAttrs<Shape> extends ShapeComponentBase<Shape> {
+    update() {
+        for (let e of this.elements) {
+            $(e).attr(this._attrs());
+        }
+        super.update();
+    }
+
+    abstract _attrs(): {}
 }
 
 
@@ -172,31 +184,10 @@ class PolylineComponent extends ShapeComponentBase<Polyline> {
 }
 
 
-class OvalComponent extends ShapeComponent {
-    onto: SketchComponent
-    shape: Oval
-    elements: JQuery<SVGElement>
-    knobs: Knob[]
-    spot: SpotKnob<Side>
-
-    constructor(onto: SketchComponent, shape: Oval) {
-        super();
-        this.onto = onto;
-        this.shape = shape;
-        this.elements = this.render();
-    }
+class OvalComponent extends ShapeComponentBaseWithAttrs<Oval> {
 
     render() {
-        var p = $svg('circle').attr(this._attrs())
-        return this.onto.addShape(p)
-            .on('click', (ev) => this.emit('click', this.onto._mkMouseEvent(ev)));
-    }
-
-    update() {
-        for (let e of this.elements) {
-            $(e).attr(this._attrs());
-        }
-        this.emit('change');
+        return $svg('circle').attr(this._attrs())
     }
 
     _attrs() { 
@@ -222,11 +213,6 @@ class OvalComponent extends ShapeComponent {
         if (at) this.hit(at);
     }
 
-    deselect(): void {
-        if (this.knobs) this.knobs.forEach(k => this.onto.removeControl(k));
-        this.knobs = undefined;
-    }
-
     hit(at: Point2D) {
         var {at: kat} = this.shape.hitTest(at);
         this.knobs[1].move(kat);
@@ -239,10 +225,41 @@ class OvalComponent extends ShapeComponent {
 }
 
 
+class ParallelogramComponent extends ShapeComponentBaseWithAttrs<Parallelogram> {
+ 
+    render() {
+        return $svg('path').attr(this._attrs())
+    }
+
+    _attrs() { 
+        return {d: this.shape.toPath()};
+    }
+
+    select(at?: Point2D) {
+        var [p0, p1, , p2] = this.shape.vertices,
+            knobs = [p0, p1, p2].map(p => new Knob(p));
+        for (let knob of knobs) {
+            knob.on('move', () => {
+                this.shape.fromTriage(knobs.map(k => k.at) as [Point2D, Point2D, Point2D]);
+                this.update();
+            });
+            this.onto.addControl(knob);
+        }
+        this.knobs = knobs;
+    }
+}
+
+
+/**
+ * A knob representing a vertex in a PolylineComponent.
+ */
 class VertexKnob extends Knob {
 
 }
 
+/**
+ * A knob used to highlight a point along a shape's outline.
+ */
 class SpotKnob<Obj> extends Knob {
     residesOn: Obj
 
@@ -250,10 +267,9 @@ class SpotKnob<Obj> extends Knob {
         super(at, mobile, cssClasses);
         this.residesOn = residesOn;
     }
-
-    //mounted() { /** @oops disable dragging */ }
 }
 
 
 
-export { ShapeComponent, ShapeComponentBase, PolylineComponent, OvalComponent }
+export { ShapeComponent, ShapeComponentBase, ShapeComponentBaseWithAttrs,
+         PolylineComponent, OvalComponent, ParallelogramComponent }

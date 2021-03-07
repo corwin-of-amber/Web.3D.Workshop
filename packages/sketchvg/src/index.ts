@@ -36,7 +36,7 @@ class SketchEditor {
         return this.add(new OvalComponent(this.sketch, shape));
     }
 
-    add(shape: ShapeComponent) {
+    add<T extends ShapeComponent>(shape: T) {
         shape.on('click', (ev) => {
             if (this.selection.has(shape)) shape.hit(ev.at);
             else this.select(shape, ev.at); 

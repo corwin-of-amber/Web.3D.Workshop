@@ -10,6 +10,7 @@ type Point2D = {x: number, y: number};
 
 namespace Point2D {
     export function fp(p: Point2D) { return Flatten.point(p.x, p.y); }
+    export function fv(p: Point2D) { return Flatten.vector(p.x, p.y); }
     export function xy(p: Point2D) { return {x: p.x, y: p.y}; }
     export function scale(p: Point2D, scale: number) {
         return {x: p.x * scale, y: p.y * scale};
@@ -289,7 +290,7 @@ class Oval {
     center: Point2D
     radii:  Point2D
 
-    constructor(center: Point2D = {x: 0, y: 0},
+    constructor(center: Point2D = Point2D.O,
                 radii:  Point2D = {x: 1, y: 1}) {
         this.center = center;
         this.radii = radii;
@@ -306,6 +307,42 @@ class Oval {
 }
 
 
+/**
+ * A convenient generalization of a rectangle.
+ */
+class Parallelogram {
+    origin: Point2D
+    vectors: [Point2D, Point2D]
+
+    constructor(origin: Point2D = Point2D.O,
+                vectors: [Point2D, Point2D] = [{x: 1, y: 0}, {x: 0, y: 1}]) {
+        this.origin = origin;
+        this.vectors = vectors;
+    }
+
+    toPath() {
+        var vs = this.vertices, xy = (p: Point2D) => `${p.x} ${p.y}`;
+        return `M${vs.map(xy).join(" L")}Z`;
+    }
+
+    get _def(): [Flatten.Point, [Flatten.Vector, Flatten.Vector]] {
+        return [Point2D.fp(this.origin), <any/*sorry*/>this.vectors.map(Point2D.fv)]; 
+    }
+
+    get vertices() {
+        let [p, [v1, v2]] = this._def, v3 = v1.add(v2);
+        return [p, ...[v1, v3, v2].map(v => p.translate(v))]
+    }
+
+    fromTriage(p: [Point2D, Point2D, Point2D]) {
+        this.origin = p[0];
+        this.vectors = [p[1], p[2]].map(q => Point2D.fv(q).subtract(Point2D.fv(p[0]))) as
+                       [Flatten.Vector, Flatten.Vector];
+        return this;
+    }
+}
+
+
 
 export { Point2D, Polyline, Vertex, Side, StraightSide, BezierSide,
-         Direction, Oval }
+         Direction, Oval, Parallelogram }
