@@ -2,7 +2,7 @@ import assert from 'assert';
 import { EventEmitter } from 'events';
 import _ from 'lodash';
 import * as THREE from 'three';
-import { BezierSide, Oval, Point2D, Polyline, Side, StraightSide } from '../packages/sketchvg/src/shape';
+import { BezierSide, Oval, Parallelogram, Point2D, Polyline, Shape2D, Side, StraightSide } from '../packages/sketchvg/src/shape';
 import { Bezier } from 'bezier-js';
 
 
@@ -83,10 +83,10 @@ class ObjectFactory {
         return this.mesh(g);
     }
 
-    surfaceOfRevolution(curveShape: Polyline, revolveShape: Oval, hsects: number, vsects: number) {
+    surfaceOfRevolution(curveShape: Polyline, revolveShape: Shape2D, hsects: number, vsects: number) {
         return this.surfaceOfRevolutionGen(
             this.curveOfPolyline(curveShape),
-            this.revolveOfOval(revolveShape),
+            this.revolveOfShape(revolveShape),
             hsects, vsects);
     }
 
@@ -155,10 +155,30 @@ class ObjectFactory {
         return (v: V) => Point2D.scale(f(v), scale);
     }
 
+    revolveOfShape(shape: Shape2D) {
+        if (shape instanceof Oval) return this.revolveOfOval(shape);
+        else if (shape instanceof Polyline) return this.revolveOfPolyline(shape);
+        else if (shape instanceof Parallelogram) return this.revolveOfPolylineable(shape);
+        else throw new Error(`invalid shape for revolution perimeter: ${shape.constructor.name}`);
+    }
+
     revolveOfOval(c: Oval) {
         var {center, radii} = c;
         return (p: Point2D) => ({x: center.x + p.x * radii.x,
                                  y: center.y + p.y * radii.y});
+    }
+
+    revolveOfPolyline(poly: Polyline) {
+        return this.revolveOfCurve(this.curveOfPolyline(poly));
+    }
+
+    revolveOfPolylineable(shape: {toPolyline(): Polyline}) {
+        return this.revolveOfPolyline(shape.toPolyline());
+    }
+
+    revolveOfCurve(curve: (r: number) => Point2D) {
+        return (p: Point2D) =>
+            curve(Point2D.fv(p).slope / 2 / Math.PI);
     }
 
     mesh(geometry: THREE.Geometry, material = this.material) {

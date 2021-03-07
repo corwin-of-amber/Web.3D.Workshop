@@ -92,7 +92,7 @@ class RenderLoop {
             _timeout: NodeJS.Timeout = undefined;
 
         this.urgent = () => {
-            if (_timeout) {
+            if (_timeout && _fuel <= 0) {
                 clearTimeout(_timeout); _timeout = undefined;
                 requestAnimationFrame( render );
             }
@@ -117,7 +117,8 @@ class RenderLoop {
 
 import EJSON from 'ejson';
 import $ from 'jquery';
-import { Oval, Polyline } from '../packages/sketchvg/src/shape';
+import { Polyline, Oval, Parallelogram, Shape2D } from '../packages/sketchvg/src/shape';
+import { ParallelogramComponent } from '../packages/sketchvg/src/components/shape';
 
 import { SoRBundles } from './blueprint/sor';
 
@@ -183,20 +184,23 @@ async function main() {
     h = new HastebinShare;
     h.h.config.baseURL = 'https://hastbp.herokuapp.com';
 
-    var {bundles: sor} = SoRBundles.create($('#panel'), 
+    var {editor, bundles: sor} = SoRBundles.create($('#panel'), 
         {outline: await loadShape()},
-        {perimeter: new Oval({x: 0, y: 0}, {x: 75, y: 75})});
+        {perimeter: 
+            new Parallelogram({x: -60, y: -60}, [{x: 120, y: 0}, {x: 0, y: 120}])
+            //new Oval({x: 0, y: 0}, {x: 75, y: 75})
+        });
 
     var blueprint = new Blueprint();
 
     var objStyle = 'wired';
 
     if (sor.curve && sor.revolve) {
-        let get = () => [sor.curve.outline.shape, sor.revolve.perimeter.shape] as [Polyline, Oval],
-            compute = ([s,r]: [Polyline, Oval]) =>
-                blueprint.factory.surfaceOfRevolution(s, r, 32, 20);
+        let get = () => [sor.curve.shape, sor.revolve.shape] as [Polyline, Shape2D],
+            compute = ([s,r]: [Polyline, Shape2D]) =>
+                blueprint.factory.surfaceOfRevolution(s, r, 32, 40);
 
-        var u0 = new Reactive.Source<[Polyline, Oval]>(),
+        var u0 = new Reactive.Source<[Polyline, Shape2D]>(),
             u1 = Reactive.intermediate(u0, compute),
             u2 = Reactive.sink(u1, Reactive.maintain(
                     g => blueprint.factory._mesh(g),
@@ -218,6 +222,7 @@ async function main() {
 
         blueprint.add(u2, 1.5);
         for (const sc of sor.components) {
+            /** @todo throttle change */
             sc.on('change', () => { u0.set(get()); scene.renderLoop.urgent(); });
         }
     }
@@ -230,28 +235,7 @@ async function main() {
 
     scene.render();
 
-    var selector = <any>document.getElementById('selector');
-
-    function select(shape: SVGElement) {
-        blueprint.clear();
-        blueprint.create(shape, 1);
-    }
-
-    /*
-    selector.addEventListener( 'change', (ev) => {
-        blueprint.clear();
-        var name = selector.value;
-        select(svg.querySelector(`[name=${name}]`));
-    });
-
-    mark.addEventListener('click', ev => {
-        var shape = (<SVGElement>ev.target); 
-        selector.value = shape.getAttribute('name');
-        select(shape);
-    });
-    */
-
-    Object.assign(window, {blueprint, scene, sor, hastebin, h});
+    Object.assign(window, {blueprint, scene, editor, sor, hastebin, h});
 }
 
 

@@ -1,6 +1,6 @@
 import { SketchEditor } from '../../packages/sketchvg/src/index'
-import { Oval, Polyline } from '../../packages/sketchvg/src/shape';
-import { OvalComponent, PolylineComponent, ShapeComponent } from '../../packages/sketchvg/src/components/shape';
+import { Polyline, Shape2D } from '../../packages/sketchvg/src/shape';
+import { PolylineComponent, ShapeComponent, ShapeComponentBase } from '../../packages/sketchvg/src/components/shape';
 import { StraightRuleComponent } from '../../packages/sketchvg/src/components/rule';
 
 
@@ -10,7 +10,7 @@ class SoRBundles {
     revolve: RevolveBundle
 
     constructor(curve: {editor: SketchEditor, shape: {outline: Polyline}},
-                revolve: {editor: SketchEditor, shape: {perimeter: Oval}}) {
+                revolve: {editor: SketchEditor, shape: {perimeter: Shape2D}}) {
         this.curve = new CurveBundle(curve.editor, curve.shape);
         this.revolve = new RevolveBundle(revolve.editor, revolve.shape);
     }
@@ -21,7 +21,7 @@ class SoRBundles {
 
     static create(panel: JQuery<HTMLElement>,
                   curve: {outline: Polyline},
-                  revolve: {perimeter: Oval}) {
+                  revolve: {perimeter: Shape2D}) {
         var e = SoRBundles.createEditors(panel);
         return {editor: e, 
                 bundles: new SoRBundles({editor: e.curve, shape: curve},
@@ -49,17 +49,27 @@ class CurveBundle {
     get components(): ShapeComponent[] {
         return [this.outline, this.axis];
     }
+
+    get shape(): Polyline {
+        return this.outline.shape;
+    }
 }
 
 class RevolveBundle {
-    perimeter: OvalComponent
+    perimeter: ShapeComponent
 
-    constructor(editor: SketchEditor, shape: {perimeter: Oval}) {
-        this.perimeter = editor.newOval(shape.perimeter);
+    constructor(editor: SketchEditor, shape: {perimeter: Shape2D}) {
+        this.perimeter = editor.newShape(shape.perimeter);
     }
 
     get components(): ShapeComponent[] {
         return [this.perimeter];
+    }
+
+    get shape(): Shape2D {
+        if (this.perimeter instanceof ShapeComponentBase)
+            return this.perimeter.shape;
+        else throw new Error(`cannot get shape of '${this.perimeter.constructor.name}'`);
     }
 }
 

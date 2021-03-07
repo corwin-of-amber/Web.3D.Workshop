@@ -11,7 +11,7 @@
 		"jquery": "^3.5.1",
 		"jquery-ui-dist": "^1.12.1",
 		"lodash": "^4.17.20",
-		"three": "^0.124.0"
+		"three": "^0.126.1"
 	},
 	"devDependencies": {
 		"@types/jquery": "^3.3.38",
