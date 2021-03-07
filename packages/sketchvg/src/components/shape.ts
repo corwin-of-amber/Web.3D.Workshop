@@ -187,40 +187,65 @@ class PolylineComponent extends ShapeComponentBase<Polyline> {
 class OvalComponent extends ShapeComponentBaseWithAttrs<Oval> {
 
     render() {
-        return $svg('circle').attr(this._attrs())
+        return $svg('ellipse').attr(this._attrs())
     }
 
     _attrs() { 
         return {cx: this.shape.center.x, cy: this.shape.center.y, 
-                r: this.shape.radii.x};  /** @todo */
+                rx: this.shape.radii.x,  ry: this.shape.radii.y};
     }
 
     select(at?: Point2D) {
-        var cknob = new Knob(this.shape.center),
-            rknob = new Knob({x: this.shape.center.x + this.shape.radii.x, y: this.shape.center.y});
-        for (let knob of [cknob, rknob]) {
-            knob.on('move', () => {
-                this.shape.center = cknob.at;
-                /** @todo only circle for now */
-                this.shape.radii.x = this.shape.radii.y = 
-                    fp(rknob.at).distanceTo(fp(cknob.at))[0];
-                this.update();
-            });
+        var cknob = new Knob(this.shape.center), rx = this.shape.radii.x, ry = this.shape.radii.y,
+            xknob = new Knob({x: this.shape.center.x + rx, y: this.shape.center.y}),
+            yknob = new Knob({x: this.shape.center.x, y: this.shape.center.y - ry});
+        this.knobs = [cknob, xknob, ...(rx == ry ? [] : [yknob])];
+        for (let knob of this.knobs) {
+            this._addKnob(knob);
         }
-        this.onto.addControl(cknob);
-        this.onto.addControl(rknob);
-        this.knobs = [cknob, rknob];
         if (at) this.hit(at);
     }
 
+    _addKnob(knob) {
+        knob.on('move', () => this._updateFromKnobs());
+        knob.on('mousedown', (ev) => {
+            if (ev.altKey && this.knobs.length == 3 && knob !== this.knobs[0]) {
+                this.onto.removeControl(knob);
+                this.knobs = this.knobs.filter(x => x !== knob);
+                this._updateFromKnobs();
+            }
+        });
+        this.onto.addControl(knob);
+    }
+
+    _updateFromKnobs() {
+        var [cknob, xknob, yknob] = this.knobs;
+        this.shape.center = cknob.at;
+
+        this.shape.radii.x = fp(xknob.at).distanceTo(fp(cknob.at))[0];
+        this.shape.radii.y = yknob ? fp(yknob.at).distanceTo(fp(cknob.at))[0]
+                                   : this.shape.radii.x;
+
+        this.update();
+    }
+
     hit(at: Point2D) {
-        var {at: kat} = this.shape.hitTest(at);
-        this.knobs[1].move(kat);
+        if (this.knobs.length == 2) {
+            var {at: kat} = this.shape.hitTest(at);
+            this.knobs[1].move(kat);
+        }
         return true;
     }
 
     edit(at: Point2D) {
-        return false;
+        if (this.knobs.length == 2) {
+            var knob = new Knob(at);
+            this.knobs.push(knob);
+            this._addKnob(knob);
+            this._updateFromKnobs();
+            return true;
+        }
+        else return false;
     }    
 }
 

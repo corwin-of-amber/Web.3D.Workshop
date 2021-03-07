@@ -27,9 +27,11 @@ svg *:focus {
     opacity: 0;
     transition: opacity ease-in-out 0.2s;
 }
+
+#panel > svg .mark > path:hover,
 #panel > svg .mark > circle:hover,
-#panel > svg .mark > rect:hover,
-#panel > svg .mark > path:hover {
+#panel > svg .mark > ellipse:hover,
+#panel > svg .mark > rect:hover {
     opacity: 0.25;
 }
 
