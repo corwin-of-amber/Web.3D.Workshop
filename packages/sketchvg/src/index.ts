@@ -1,6 +1,6 @@
-import { Polyline, Oval, Point2D } from './shape';
+import { Polyline, Oval, Point2D, Shape2D, Parallelogram } from './shape';
 import { SketchComponent } from './components/sketch';
-import { ShapeComponent, PolylineComponent, OvalComponent } from './components/shape';
+import { ShapeComponent, PolylineComponent, OvalComponent, ParallelogramComponent, ShapeComponentBase } from './components/shape';
 import './editor.css';
 
 
@@ -28,12 +28,23 @@ class SketchEditor {
         });
     }
 
+    newShape(shape: Shape2D): ShapeComponent {
+        if (shape instanceof Polyline) return this.newPolyline(shape);
+        else if (shape instanceof Oval) return this.newOval(shape);
+        else if (shape instanceof Parallelogram) return this.newParallelogram(shape);
+        else throw new Error(`unrecognized shape for editing: '${shape.constructor.name}'`);
+    }
+
     newPolyline(shape: Polyline) {
         return this.add(new PolylineComponent(this.sketch, shape));
     }
 
     newOval(shape: Oval) {
         return this.add(new OvalComponent(this.sketch, shape));
+    }
+
+    newParallelogram(shape: Parallelogram) {
+        return this.add(new ParallelogramComponent(this.sketch, shape));
     }
 
     add<T extends ShapeComponent>(shape: T) {

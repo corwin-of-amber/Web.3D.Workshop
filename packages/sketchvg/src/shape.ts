@@ -22,7 +22,10 @@ import xy = Point2D.xy;
 import fp = Point2D.fp;
 
 
-class Polyline {
+class Shape2D { }
+
+
+class Polyline extends Shape2D {
     vertices: Vertex[] = []
 
     createVertex(at: Point2D, end = Direction.FORWARD, side?: Side) {
@@ -286,12 +289,13 @@ class BezierSide extends Side {
 EJSON.addType(BezierSide.name, BezierSide.fromJSONValue);
 
 
-class Oval {
+class Oval extends Shape2D {
     center: Point2D
     radii:  Point2D
 
     constructor(center: Point2D = Point2D.O,
                 radii:  Point2D = {x: 1, y: 1}) {
+        super();
         this.center = center;
         this.radii = radii;
     }
@@ -310,12 +314,13 @@ class Oval {
 /**
  * A convenient generalization of a rectangle.
  */
-class Parallelogram {
+class Parallelogram extends Shape2D {
     origin: Point2D
     vectors: [Point2D, Point2D]
 
     constructor(origin: Point2D = Point2D.O,
                 vectors: [Point2D, Point2D] = [{x: 1, y: 0}, {x: 0, y: 1}]) {
+        super();
         this.origin = origin;
         this.vectors = vectors;
     }
@@ -323,6 +328,13 @@ class Parallelogram {
     toPath() {
         var vs = this.vertices, xy = (p: Point2D) => `${p.x} ${p.y}`;
         return `M${vs.map(xy).join(" L")}Z`;
+    }
+
+    toPolyline() {
+        var poly = new Polyline();
+        for (let v of this.vertices) poly.createVertex(v);
+        poly.weld();
+        return poly;
     }
 
     get _def(): [Flatten.Point, [Flatten.Vector, Flatten.Vector]] {
@@ -344,5 +356,5 @@ class Parallelogram {
 
 
 
-export { Point2D, Polyline, Vertex, Side, StraightSide, BezierSide,
+export { Point2D, Shape2D, Polyline, Vertex, Side, StraightSide, BezierSide,
          Direction, Oval, Parallelogram }
